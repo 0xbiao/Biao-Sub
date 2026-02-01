@@ -468,29 +468,29 @@
 
         createApp({
             setup() {
+                try {
+                    const isLoggedIn = ref(false); const loginPassword = ref(''); const loginLoading = ref(false)
+                    const currentTab = ref('resources')
+                    const toast = reactive({ show: false, message: '', type: 'success' })
 
-                const isLoggedIn = ref(false); const loginPassword = ref(''); const loginLoading = ref(false)
-                const currentTab = ref('resources')
-                const toast = reactive({ show: false, message: '', type: 'success' })
+                    // --- Data & State ---
+                    const resources = ref([])
+                    const groups = ref([])
+                    const resourceModal = reactive({ show: false, isEdit: false })
+                    const resourceForm = ref({ name: '', url: '', type: 'node' })
+                    const groupModal = reactive({ show: false, isEdit: false, tab: 'base' })
+                    const templateModal = reactive({ show: false }) // 新增模板选择模态框
+                    const groupForm = ref({ id: null, name: '', config: [], clash_config: { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' } })
+                    const groupNameError = ref(false)
+                    const batchMode = ref(false)
+                    const selectedResources = ref([])
+                    const submitting = ref(false)
+                    const nodeSelector = reactive({ show: false, loading: false, resourceId: null, resourceName: '', nodes: [], selected: 'all', tempSelected: [] })
+                    const clashNodeSelector = reactive({ show: false, loading: false, currentGroup: null, allNodeNames: [], tempSelected: [] })
+                    const previewModal = reactive({ show: false, nodes: [] })
 
-                // --- Data & State ---
-                const resources = ref([])
-                const groups = ref([])
-                const resourceModal = reactive({ show: false, isEdit: false })
-                const resourceForm = ref({ name: '', url: '', type: 'node' })
-                const groupModal = reactive({ show: false, isEdit: false, tab: 'base' })
-                const templateModal = reactive({ show: false }) // 新增模板选择模态框
-                const groupForm = ref({ id: null, name: '', config: [], clash_config: { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' } })
-                const groupNameError = ref(false)
-                const batchMode = ref(false)
-                const selectedResources = ref([])
-                const submitting = ref(false)
-                const nodeSelector = reactive({ show: false, loading: false, resourceId: null, resourceName: '', nodes: [], selected: 'all', tempSelected: [] })
-                const clashNodeSelector = reactive({ show: false, loading: false, currentGroup: null, allNodeNames: [], tempSelected: [] })
-                const previewModal = reactive({ show: false, nodes: [] })
-
-                // --- 默认模板数据 ---
-                const defaultHeader = `mixed-port: 7890
+                    // --- 默认模板数据 ---
+                    const defaultHeader = `mixed-port: 7890
 ipv6: true
 allow-lan: true
 unified-delay: false
@@ -560,7 +560,7 @@ dns:
       - "https://dns.alidns.com/dns-query"
       - "https://doh.pub/dns-query"`
 
-                const defaultRules = `rules:
+                    const defaultRules = `rules:
   - GEOIP,lan,DIRECT,no-resolve
   - PROCESS-NAME,XTerminal.exe,DIRECT
   - PROCESS-NAME,Thunder.exe,DIRECT
@@ -594,236 +594,241 @@ dns:
   - GEOIP,CN,DIRECT
   - MATCH,Proxy`
 
-                // --- Methods ---
-                const authFetch = async (url, opts = {}) => {
-                    opts.headers = { 'Authorization': localStorage.getItem('biaosub_token'), 'Content-Type': 'application/json', ...opts.headers }
-                    const res = await fetch(url, opts); if (res.status === 401) { isLoggedIn.value = false; return null; } return res
-                }
-                const showToast = (msg, type = 'success') => { toast.message = msg; toast.type = type; toast.show = true; setTimeout(() => toast.show = false, 3000) }
-                const copyText = (txt) => navigator.clipboard.writeText(txt).then(() => showToast('已复制'))
-
-                const handleLogin = async () => {
-                    loginLoading.value = true
-                    const res = await fetch(API + '/login', { method: 'POST', body: JSON.stringify({ password: loginPassword.value }) })
-                    if ((await res.json()).success) { localStorage.setItem('biaosub_token', loginPassword.value); isLoggedIn.value = true; loadData() }
-                    else showToast('密码错误', 'error')
-                    loginLoading.value = false
-                }
-
-                const loadData = async () => {
-                    const [rRes, gRes] = await Promise.all([authFetch(`${API}/subs`), authFetch(`${API}/groups`)])
-                    const rData = await rRes.json(); const gData = await gRes.json()
-                    resources.value = rData.data; groups.value = gData.data
-                }
-                const loadResources = async () => { const res = await authFetch(API + '/subs'); if (res) resources.value = (await res.json()).data }
-                const loadGroups = async () => { const res = await authFetch(API + '/groups'); if (res) groups.value = (await res.json()).data }
-
-                const getProgressClass = (p) => p > 90 ? 'progress-error' : (p > 75 ? 'progress-warning' : 'progress-primary')
-                const isExpired = (ts) => ts ? Date.now() > ts * 1000 : false
-
-                // 统一的资源切换逻辑
-                const toggleResourceSelection = (resId, checked) => {
-                    if (checked) {
-                        const exists = groupForm.value.config.find(c => c.subId === resId)
-                        if (!exists) groupForm.value.config.push({ subId: resId, include: [] })
-                    } else {
-                        groupForm.value.config = groupForm.value.config.filter(c => c.subId !== resId)
+                    // --- Methods ---
+                    const authFetch = async (url, opts = {}) => {
+                        opts.headers = { 'Authorization': localStorage.getItem('biaosub_token'), 'Content-Type': 'application/json', ...opts.headers }
+                        const res = await fetch(url, opts); if (res.status === 401) { isLoggedIn.value = false; return null; } return res
                     }
-                }
-                const isResourceSelected = (resId) => !!groupForm.value.config.find(c => c.subId === resId)
+                    const showToast = (msg, type = 'success') => { toast.message = msg; toast.type = type; toast.show = true; setTimeout(() => toast.show = false, 3000) }
+                    const copyText = (txt) => navigator.clipboard.writeText(txt).then(() => showToast('已复制'))
 
-                const openResourceModal = () => { resourceForm.value = { name: '', url: '', type: 'group' }; resourceModal.isEdit = false; resourceModal.show = true }
-                const editResource = (item) => { resourceForm.value = { ...item }; resourceModal.isEdit = true; resourceModal.show = true }
-                const saveResource = async () => {
-                    if (resourceForm.value.type === 'group' && (!resourceForm.value.name || !resourceForm.value.name.trim())) {
-                        showToast('节点组必须填写名称', 'error'); return;
-                    }
-                    submitting.value = true
-                    const method = resourceModal.isEdit ? 'PUT' : 'POST'
-                    const url = resourceModal.isEdit ? `${API}/subs/${resourceForm.value.id}` : `${API}/subs`
-                    let info = null;
-                    if (resourceForm.value.url) {
-                        try {
-                            const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: resourceForm.value.url, type: resourceForm.value.type }) });
-                            const d = await checkRes.json();
-                            if (d.success) info = d.data;
-                        } catch (e) { }
-                    }
-                    const payload = { ...resourceForm.value, info };
-                    await authFetch(url, { method, body: JSON.stringify(payload) })
-                    resourceModal.show = false; submitting.value = false; loadResources()
-                }
-                const deleteResource = async (id) => { if (confirm('删除资源?')) { await authFetch(`${API}/subs/${id}`, { method: 'DELETE' }); loadResources() } }
-                const refreshResource = async (item) => {
-                    item.refreshing = true;
-                    const res = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: item.url, type: item.type }) })
-                    const d = await res.json()
-                    if (d.success) {
-                        await authFetch(`${API}/subs/${item.id}`, { method: 'PUT', body: JSON.stringify({ info: d.data }) })
-                        showToast('刷新成功')
-                    } else { showToast('刷新失败', 'error') }
-                    item.refreshing = false; loadResources()
-                }
-
-                const selectAllResources = () => { selectedResources.value = resources.value.map(r => r.id) }
-                const executeBatchDelete = async () => {
-                    if (!confirm(`确定删除选中的 ${selectedResources.value.length} 个资源吗?`)) return;
-                    await authFetch(API + '/subs/delete', { method: 'POST', body: JSON.stringify({ ids: selectedResources.value }) });
-                    selectedResources.value = []; batchMode.value = false; loadResources(); showToast('批量删除成功');
-                }
-
-                // --- Group & Template Logic ---
-                const openGroupModal = () => { templateModal.show = true }
-                const selectTemplate = (type) => {
-                    templateModal.show = false
-                    groupNameError.value = false; groupModal.isEdit = false; groupModal.tab = 'base'
-
-                    const base = {
-                        name: '',
-                        config: [],
-                        clash_config: { mode: 'generate', resources: [], header: '', groups: [], rules: '', raw_yaml: '' }
+                    const handleLogin = async () => {
+                        loginLoading.value = true
+                        const res = await fetch(API + '/login', { method: 'POST', body: JSON.stringify({ password: loginPassword.value }) })
+                        if ((await res.json()).success) { localStorage.setItem('biaosub_token', loginPassword.value); isLoggedIn.value = true; loadData() }
+                        else showToast('密码错误', 'error')
+                        loginLoading.value = false
                     }
 
-                    if (type === 'default') {
-                        base.clash_config.header = defaultHeader
-                        base.clash_config.rules = defaultRules
-                        base.clash_config.groups = [{ name: 'Proxy', type: 'select', proxies: [] }]
-                    } else {
-                        base.clash_config.groups = [{ name: 'Proxy', type: 'select', proxies: [] }]
+                    const loadData = async () => {
+                        const [rRes, gRes] = await Promise.all([authFetch(`${API}/subs`), authFetch(`${API}/groups`)])
+                        const rData = await rRes.json(); const gData = await gRes.json()
+                        resources.value = rData.data; groups.value = gData.data
                     }
+                    const loadResources = async () => { const res = await authFetch(API + '/subs'); if (res) resources.value = (await res.json()).data }
+                    const loadGroups = async () => { const res = await authFetch(API + '/groups'); if (res) groups.value = (await res.json()).data }
 
-                    groupForm.value = base
-                    groupModal.show = true
-                }
+                    const getProgressClass = (p) => p > 90 ? 'progress-error' : (p > 75 ? 'progress-warning' : 'progress-primary')
+                    const isExpired = (ts) => ts ? Date.now() > ts * 1000 : false
 
-                const editGroup = (group) => {
-                    const g = JSON.parse(JSON.stringify(group))
-                    if (!g.clash_config) g.clash_config = { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' }
-                    if (!g.config) g.config = []
-                    groupForm.value = g
-                    groupNameError.value = false; groupModal.isEdit = true; groupModal.tab = 'base'; groupModal.show = true
-                }
-
-                const saveGroup = async () => {
-                    if (!groupForm.value.name) { groupNameError.value = true; return; }
-                    submitting.value = true
-                    if (groupForm.value.clash_config) groupForm.value.clash_config.resources = []
-
-                    const method = groupModal.isEdit ? 'PUT' : 'POST'
-                    const url = groupModal.isEdit ? `${API}/groups/${groupForm.value.id}` : `${API}/groups`
-                    await authFetch(url, { method, body: JSON.stringify(groupForm.value) })
-                    groupModal.show = false; loadGroups(); submitting.value = false
-                }
-                const deleteGroup = async (id) => { if (confirm('确定删除?')) { await authFetch(`${API}/groups/${id}`, { method: 'DELETE' }); loadGroups() } }
-                const refreshToken = async (g) => { if (confirm('重置链接?')) { await authFetch(`${API}/groups/${g.id}`, { method: 'PUT', body: JSON.stringify({ refresh_token: true }) }); loadGroups() } }
-                const copyGroupLink = (g, type) => {
-                    const host = window.location.origin
-                    const url = `${host}/api/g/${g.token}?format=${type}`
-                    navigator.clipboard.writeText(url).then(() => showToast('链接已复制', 'success'))
-                }
-                const getGroupResourceCount = (g) => { return (g.config ? g.config.length : 0); }
-                const getResourceName = (id) => resources.value.find(r => r.id === id)?.name || '未知资源'
-
-                const openNodeSelector = async (res) => {
-                    nodeSelector.resourceId = res.id; nodeSelector.resourceName = res.name;
-                    nodeSelector.show = true; nodeSelector.loading = true;
-                    // Find current selection in groupForm.config
-                    const currentConf = groupForm.value.config.find(c => c.subId === res.id)
-
-                    try {
-                        const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: res.url, type: res.type }) })
-                        const d = await checkRes.json()
-                        if (d.success && d.data.nodes) {
-                            nodeSelector.nodes = d.data.nodes
-                            if (currentConf && Array.isArray(currentConf.include) && currentConf.include.length > 0) {
-                                nodeSelector.selected = 'select'
-                                nodeSelector.tempSelected = [...currentConf.include]
-                            } else {
-                                nodeSelector.selected = 'all'
-                                nodeSelector.tempSelected = d.data.nodes.map(n => n.name)
-                            }
-                        } else { showToast('加载节点失败', 'error') }
-                    } catch (e) { showToast('加载节点失败', 'error') }
-                    nodeSelector.loading = false
-                }
-                const confirmNodeSelection = () => {
-                    const idx = groupForm.value.config.findIndex(x => x.subId === nodeSelector.resourceId)
-                    if (idx > -1) {
-                        if (nodeSelector.selected === 'all' || nodeSelector.tempSelected.length === nodeSelector.nodes.length) {
-                            groupForm.value.config[idx].include = []
+                    // 统一的资源切换逻辑
+                    const toggleResourceSelection = (resId, checked) => {
+                        if (checked) {
+                            const exists = groupForm.value.config.find(c => c.subId === resId)
+                            if (!exists) groupForm.value.config.push({ subId: resId, include: [] })
                         } else {
-                            groupForm.value.config[idx].include = nodeSelector.tempSelected
+                            groupForm.value.config = groupForm.value.config.filter(c => c.subId !== resId)
                         }
                     }
-                    nodeSelector.show = false
-                }
+                    const isResourceSelected = (resId) => !!groupForm.value.config.find(c => c.subId === resId)
 
-                const addClashGroup = () => { groupForm.value.clash_config.groups.push({ name: 'NewGroup', type: 'select', proxies: [] }) }
-                const openClashNodeSelector = async (group) => {
-                    clashNodeSelector.currentGroup = group; clashNodeSelector.show = true; clashNodeSelector.loading = true;
-                    let allNames = []
-                    for (const conf of groupForm.value.config) {
-                        const res = resources.value.find(r => r.id === conf.subId)
-                        if (!res) continue;
+                    const openResourceModal = () => { resourceForm.value = { name: '', url: '', type: 'group' }; resourceModal.isEdit = false; resourceModal.show = true }
+                    const editResource = (item) => { resourceForm.value = { ...item }; resourceModal.isEdit = true; resourceModal.show = true }
+                    const saveResource = async () => {
+                        if (resourceForm.value.type === 'group' && (!resourceForm.value.name || !resourceForm.value.name.trim())) {
+                            showToast('节点组必须填写名称', 'error'); return;
+                        }
+                        submitting.value = true
+                        const method = resourceModal.isEdit ? 'PUT' : 'POST'
+                        const url = resourceModal.isEdit ? `${API}/subs/${resourceForm.value.id}` : `${API}/subs`
+                        let info = null;
+                        if (resourceForm.value.url) {
+                            try {
+                                const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: resourceForm.value.url, type: resourceForm.value.type }) });
+                                const d = await checkRes.json();
+                                if (d.success) info = d.data;
+                            } catch (e) { }
+                        }
+                        const payload = { ...resourceForm.value, info };
+                        await authFetch(url, { method, body: JSON.stringify(payload) })
+                        resourceModal.show = false; submitting.value = false; loadResources()
+                    }
+                    const deleteResource = async (id) => { if (confirm('删除资源?')) { await authFetch(`${API}/subs/${id}`, { method: 'DELETE' }); loadResources() } }
+                    const refreshResource = async (item) => {
+                        item.refreshing = true;
+                        const res = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: item.url, type: item.type }) })
+                        const d = await res.json()
+                        if (d.success) {
+                            await authFetch(`${API}/subs/${item.id}`, { method: 'PUT', body: JSON.stringify({ info: d.data }) })
+                            showToast('刷新成功')
+                        } else { showToast('刷新失败', 'error') }
+                        item.refreshing = false; loadResources()
+                    }
+
+                    const selectAllResources = () => { selectedResources.value = resources.value.map(r => r.id) }
+                    const executeBatchDelete = async () => {
+                        if (!confirm(`确定删除选中的 ${selectedResources.value.length} 个资源吗?`)) return;
+                        await authFetch(API + '/subs/delete', { method: 'POST', body: JSON.stringify({ ids: selectedResources.value }) });
+                        selectedResources.value = []; batchMode.value = false; loadResources(); showToast('批量删除成功');
+                    }
+
+                    // --- Group & Template Logic ---
+                    const openGroupModal = () => { templateModal.show = true }
+                    const selectTemplate = (type) => {
+                        templateModal.show = false
+                        groupNameError.value = false; groupModal.isEdit = false; groupModal.tab = 'base'
+
+                        const base = {
+                            name: '',
+                            config: [],
+                            clash_config: { mode: 'generate', resources: [], header: '', groups: [], rules: '', raw_yaml: '' }
+                        }
+
+                        if (type === 'default') {
+                            base.clash_config.header = defaultHeader
+                            base.clash_config.rules = defaultRules
+                            base.clash_config.groups = [{ name: 'Proxy', type: 'select', proxies: [] }]
+                        } else {
+                            base.clash_config.groups = [{ name: 'Proxy', type: 'select', proxies: [] }]
+                        }
+
+                        groupForm.value = base
+                        groupModal.show = true
+                    }
+
+                    const editGroup = (group) => {
+                        const g = JSON.parse(JSON.stringify(group))
+                        if (!g.clash_config) g.clash_config = { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' }
+                        if (!g.config) g.config = []
+                        groupForm.value = g
+                        groupNameError.value = false; groupModal.isEdit = true; groupModal.tab = 'base'; groupModal.show = true
+                    }
+
+                    const saveGroup = async () => {
+                        if (!groupForm.value.name) { groupNameError.value = true; return; }
+                        submitting.value = true
+                        if (groupForm.value.clash_config) groupForm.value.clash_config.resources = []
+
+                        const method = groupModal.isEdit ? 'PUT' : 'POST'
+                        const url = groupModal.isEdit ? `${API}/groups/${groupForm.value.id}` : `${API}/groups`
+                        await authFetch(url, { method, body: JSON.stringify(groupForm.value) })
+                        groupModal.show = false; loadGroups(); submitting.value = false
+                    }
+                    const deleteGroup = async (id) => { if (confirm('确定删除?')) { await authFetch(`${API}/groups/${id}`, { method: 'DELETE' }); loadGroups() } }
+                    const refreshToken = async (g) => { if (confirm('重置链接?')) { await authFetch(`${API}/groups/${g.id}`, { method: 'PUT', body: JSON.stringify({ refresh_token: true }) }); loadGroups() } }
+                    const copyGroupLink = (g, type) => {
+                        const host = window.location.origin
+                        const url = `${host}/api/g/${g.token}?format=${type}`
+                        navigator.clipboard.writeText(url).then(() => showToast('链接已复制', 'success'))
+                    }
+                    const getGroupResourceCount = (g) => { return (g.config ? g.config.length : 0); }
+                    const getResourceName = (id) => resources.value.find(r => r.id === id)?.name || '未知资源'
+
+                    const openNodeSelector = async (res) => {
+                        nodeSelector.resourceId = res.id; nodeSelector.resourceName = res.name;
+                        nodeSelector.show = true; nodeSelector.loading = true;
+                        // Find current selection in groupForm.config
+                        const currentConf = groupForm.value.config.find(c => c.subId === res.id)
+
                         try {
                             const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: res.url, type: res.type }) })
                             const d = await checkRes.json()
                             if (d.success && d.data.nodes) {
-                                const allowed = (Array.isArray(conf.include) && conf.include.length > 0) ? new Set(conf.include) : 'all';
-                                for (const n of d.data.nodes) {
-                                    if (allowed === 'all' || allowed.has(n.name)) {
-                                        let name = n.name.trim();
-                                        let i = 1; let oname = name;
-                                        while (allNames.includes(name)) name = `${oname} ${i++}`;
-                                        allNames.push(name)
+                                nodeSelector.nodes = d.data.nodes
+                                if (currentConf && Array.isArray(currentConf.include) && currentConf.include.length > 0) {
+                                    nodeSelector.selected = 'select'
+                                    nodeSelector.tempSelected = [...currentConf.include]
+                                } else {
+                                    nodeSelector.selected = 'all'
+                                    nodeSelector.tempSelected = d.data.nodes.map(n => n.name)
+                                }
+                            } else { showToast('加载节点失败', 'error') }
+                        } catch (e) { showToast('加载节点失败', 'error') }
+                        nodeSelector.loading = false
+                    }
+                    const confirmNodeSelection = () => {
+                        const idx = groupForm.value.config.findIndex(x => x.subId === nodeSelector.resourceId)
+                        if (idx > -1) {
+                            if (nodeSelector.selected === 'all' || nodeSelector.tempSelected.length === nodeSelector.nodes.length) {
+                                groupForm.value.config[idx].include = []
+                            } else {
+                                groupForm.value.config[idx].include = nodeSelector.tempSelected
+                            }
+                        }
+                        nodeSelector.show = false
+                    }
+
+                    const addClashGroup = () => { groupForm.value.clash_config.groups.push({ name: 'NewGroup', type: 'select', proxies: [] }) }
+                    const openClashNodeSelector = async (group) => {
+                        clashNodeSelector.currentGroup = group; clashNodeSelector.show = true; clashNodeSelector.loading = true;
+                        let allNames = []
+                        for (const conf of groupForm.value.config) {
+                            const res = resources.value.find(r => r.id === conf.subId)
+                            if (!res) continue;
+                            try {
+                                const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: res.url, type: res.type }) })
+                                const d = await checkRes.json()
+                                if (d.success && d.data.nodes) {
+                                    const allowed = (Array.isArray(conf.include) && conf.include.length > 0) ? new Set(conf.include) : 'all';
+                                    for (const n of d.data.nodes) {
+                                        if (allowed === 'all' || allowed.has(n.name)) {
+                                            let name = n.name.trim();
+                                            let i = 1; let oname = name;
+                                            while (allNames.includes(name)) name = `${oname} ${i++}`;
+                                            allNames.push(name)
+                                        }
                                     }
                                 }
-                            }
-                        } catch (e) { }
+                            } catch (e) { }
+                        }
+                        clashNodeSelector.allNodeNames = allNames
+                        clashNodeSelector.tempSelected = [...(group.proxies || [])]
+                        clashNodeSelector.loading = false
                     }
-                    clashNodeSelector.allNodeNames = allNames
-                    clashNodeSelector.tempSelected = [...(group.proxies || [])]
-                    clashNodeSelector.loading = false
-                }
-                const clashSelectAll = () => clashNodeSelector.tempSelected = [...clashNodeSelector.allNodeNames]
-                const confirmClashNodeSelection = () => {
-                    if (clashNodeSelector.currentGroup) clashNodeSelector.currentGroup.proxies = [...clashNodeSelector.tempSelected]
-                    clashNodeSelector.show = false
-                }
+                    const clashSelectAll = () => clashNodeSelector.tempSelected = [...clashNodeSelector.allNodeNames]
+                    const confirmClashNodeSelection = () => {
+                        if (clashNodeSelector.currentGroup) clashNodeSelector.currentGroup.proxies = [...clashNodeSelector.tempSelected]
+                        clashNodeSelector.show = false
+                    }
 
-                const handleYamlImport = (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    if (file.size > 2 * 1024 * 1024) { alert("文件过大"); return; }
-                    const reader = new FileReader();
-                    reader.onload = (e) => { groupForm.value.clash_config.raw_yaml = e.target.result; showToast("导入成功"); };
-                    reader.readAsText(file);
-                    event.target.value = '';
-                }
+                    const handleYamlImport = (event) => {
+                        const file = event.target.files[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) { alert("文件过大"); return; }
+                        const reader = new FileReader();
+                        reader.onload = (e) => { groupForm.value.clash_config.raw_yaml = e.target.result; showToast("导入成功"); };
+                        reader.readAsText(file);
+                        event.target.value = '';
+                    }
 
-                const previewNodes = async (item) => {
-                    const res = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: item.url, type: item.type }) })
-                    const d = await res.json()
-                    if (d.success && d.data.nodes) { previewModal.nodes = d.data.nodes; previewModal.show = true }
-                    else { showToast('预览失败', 'error') }
-                }
-                const copyAllPreviewNodes = () => { copyText(previewModal.nodes.map(n => n.link).join('\n')) }
-                const openSettings = () => showToast('功能开发中...')
-                const logout = () => { localStorage.removeItem('biaosub_token'); isLoggedIn.value = false }
+                    const previewNodes = async (item) => {
+                        const res = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: item.url, type: item.type }) })
+                        const d = await res.json()
+                        if (d.success && d.data.nodes) { previewModal.nodes = d.data.nodes; previewModal.show = true }
+                        else { showToast('预览失败', 'error') }
+                    }
+                    const copyAllPreviewNodes = () => { copyText(previewModal.nodes.map(n => n.link).join('\n')) }
+                    const openSettings = () => showToast('功能开发中...')
+                    const logout = () => { localStorage.removeItem('biaosub_token'); isLoggedIn.value = false }
 
-                if (localStorage.getItem('biaosub_token')) { isLoggedIn.value = true; loadData() }
+                    if (localStorage.getItem('biaosub_token')) { isLoggedIn.value = true; loadData() }
 
-                return {
-                    isLoggedIn, loginPassword, loginLoading, handleLogin, logout,
-                    currentTab, resources, groups, submitting, toast,
-                    batchMode, selectedResources, selectAllResources, executeBatchDelete,
-                    resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
-                    groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, handleYamlImport,
-                    templateModal, selectTemplate, toggleResourceSelection, isResourceSelected,
-                    nodeSelector, openNodeSelector, confirmNodeSelection,
-                    clashNodeSelector, addClashGroup, openClashNodeSelector, clashSelectAll, confirmClashNodeSelection,
-                    previewModal, previewNodes, copyText, copyAllPreviewNodes,
-                    openSettings, getProgressClass, isExpired
+                    return {
+                        isLoggedIn, loginPassword, loginLoading, handleLogin, logout,
+                        currentTab, resources, groups, submitting, toast,
+                        batchMode, selectedResources, selectAllResources, executeBatchDelete,
+                        resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
+                        groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, handleYamlImport,
+                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected,
+                        nodeSelector, openNodeSelector, confirmNodeSelection,
+                        clashNodeSelector, addClashGroup, openClashNodeSelector, clashSelectAll, confirmClashNodeSelection,
+                        previewModal, previewNodes, copyText, copyAllPreviewNodes,
+                        openSettings, getProgressClass, isExpired
+                    }
+                } catch (e) {
+                    alert("JS Error: " + e.message + "\n\n" + e.stack);
+                    console.error(e);
+                    return {};
                 }
             }
         }).mount('#app')
