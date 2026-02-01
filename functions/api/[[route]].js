@@ -60,6 +60,9 @@ app.get('/g/:token', async (c) => {
             let allowed = 'all';
             if (item.include && Array.isArray(item.include) && item.include.length > 0) allowed = new Set(item.include);
 
+            // 获取链式代理配置
+            const dialerProxyConfig = item.dialerProxy || { enabled: false, group: '' };
+
             for (const node of nodes) {
                 if (allowed !== 'all' && !allowed.has(node.name)) continue;
 
@@ -74,6 +77,12 @@ app.get('/g/:token', async (c) => {
                 allNodeNamesSet.add(name);
 
                 node.link = generateNodeLink(node);
+
+                // 标记链式代理信息
+                if (dialerProxyConfig.enabled && dialerProxyConfig.group) {
+                    node._dialerProxy = dialerProxyConfig.group;
+                }
+
                 allNodes.push(node);
             }
         }
@@ -84,11 +93,21 @@ app.get('/g/:token', async (c) => {
             let yaml = (clashConfig.header || "") + "\n\nproxies:\n";
             const generatedNodeNames = new Set();
 
+            // 分离普通节点和链式代理节点，链式代理节点排在末尾
+            const normalNodes = allNodes.filter(n => !n._dialerProxy);
+            const dialerNodes = allNodes.filter(n => n._dialerProxy);
+            const sortedNodes = [...normalNodes, ...dialerNodes];
+
             // Generate Proxies
-            for (const node of allNodes) {
+            for (const node of sortedNodes) {
                 const proxyYaml = toClashProxy(node);
                 if (proxyYaml) {
-                    yaml += proxyYaml + "\n";
+                    // 添加 dialer-proxy 字段
+                    if (node._dialerProxy) {
+                        yaml += proxyYaml + `\n    dialer-proxy: ${node._dialerProxy}\n`;
+                    } else {
+                        yaml += proxyYaml + "\n";
+                    }
                     generatedNodeNames.add(node.name);
                 }
             }

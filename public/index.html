@@ -258,23 +258,44 @@
                         <div
                             class="max-h-96 overflow-y-auto custom-scrollbar bg-slate-900 rounded-lg border border-slate-700 p-2">
                             <div v-for="res in resources" :key="res.id"
-                                class="flex items-center justify-between p-3 border-b border-slate-800 last:border-none hover:bg-slate-800/50">
-                                <label class="flex items-center gap-3 cursor-pointer flex-1">
-                                    <input type="checkbox" class="checkbox checkbox-accent"
-                                        :checked="isResourceSelected(res.id)"
-                                        @change="toggleResourceSelection(res.id, $event.target.checked)" />
-                                    <div>
-                                        <div class="text-white font-medium">{{ res.name }}</div>
-                                        <div class="text-xs text-slate-500 mt-1">包含节点: {{ res.info ? (res.info.nodeCount
-                                            || 0) : 0 }}
+                                class="p-3 border-b border-slate-800 last:border-none hover:bg-slate-800/50">
+                                <div class="flex items-center justify-between">
+                                    <label class="flex items-center gap-3 cursor-pointer flex-1">
+                                        <input type="checkbox" class="checkbox checkbox-accent"
+                                            :checked="isResourceSelected(res.id)"
+                                            @change="toggleResourceSelection(res.id, $event.target.checked)" />
+                                        <div>
+                                            <div class="text-white font-medium">{{ res.name }}</div>
+                                            <div class="text-xs text-slate-500 mt-1">包含节点: {{ res.info ?
+                                                (res.info.nodeCount
+                                                || 0) : 0 }}
+                                            </div>
                                         </div>
-                                    </div>
-                                </label>
-                                <button class="btn btn-xs btn-ghost text-accent"
-                                    v-if="res.info && res.info.nodeCount > 0 && isResourceSelected(res.id)"
-                                    @click="openNodeSelector(res)">
-                                    <i class="fa-solid fa-filter"></i> 筛选节点
-                                </button>
+                                    </label>
+                                    <button class="btn btn-xs btn-ghost text-accent"
+                                        v-if="res.info && res.info.nodeCount > 0 && isResourceSelected(res.id)"
+                                        @click="openNodeSelector(res)">
+                                        <i class="fa-solid fa-filter"></i> 筛选节点
+                                    </button>
+                                </div>
+                                <!-- 链式代理设置 -->
+                                <div v-if="isResourceSelected(res.id)" class="mt-2 pl-8 flex items-center gap-3">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" class="toggle toggle-xs toggle-warning"
+                                            :checked="getDialerProxy(res.id).enabled"
+                                            @change="setDialerProxy(res.id, $event.target.checked, getDialerProxy(res.id).group)" />
+                                        <span class="text-xs text-warning"><i
+                                                class="fa-solid fa-link mr-1"></i>链式代理</span>
+                                    </label>
+                                    <select v-if="getDialerProxy(res.id).enabled"
+                                        class="select select-xs select-bordered bg-slate-800 text-white max-w-[150px]"
+                                        :value="getDialerProxy(res.id).group"
+                                        @change="setDialerProxy(res.id, true, $event.target.value)">
+                                        <option value="">选择策略组</option>
+                                        <option v-for="g in groupForm.clash_config.groups" :key="g.name"
+                                            :value="g.name">{{ g.name }}</option>
+                                    </select>
+                                </div>
                             </div>
                             <div v-if="resources.length===0" class="text-center py-4 text-slate-500">暂无可用资源</div>
                         </div>
@@ -752,10 +773,24 @@ dns:
 
                     // 全选/取消全选资源
                     const selectAllGroupResources = () => {
-                        groupForm.value.config = resources.value.map(r => ({ subId: r.id, include: [] }));
+                        groupForm.value.config = resources.value.map(r => ({ subId: r.id, include: [], dialerProxy: { enabled: false, group: '' } }));
                     }
                     const deselectAllGroupResources = () => {
                         groupForm.value.config = [];
+                    }
+
+                    // 链式代理配置
+                    const getDialerProxy = (resId) => {
+                        const conf = groupForm.value.config.find(c => c.subId === resId);
+                        return conf?.dialerProxy || { enabled: false, group: '' };
+                    }
+                    const setDialerProxy = (resId, enabled, group = '') => {
+                        const conf = groupForm.value.config.find(c => c.subId === resId);
+                        if (conf) {
+                            if (!conf.dialerProxy) conf.dialerProxy = {};
+                            conf.dialerProxy.enabled = enabled;
+                            conf.dialerProxy.group = group;
+                        }
                     }
 
                     const openNodeSelector = async (res) => {
@@ -853,7 +888,7 @@ dns:
                         batchMode, selectedResources, selectAllResources, executeBatchDelete,
                         resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
                         groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport,
-                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources,
+                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, addClashGroup, openClashNodeSelector, clashSelectAll, confirmClashNodeSelection,
                         previewModal, previewNodes, copyText, copyAllPreviewNodes,
