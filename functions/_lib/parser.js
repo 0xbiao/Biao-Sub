@@ -17,84 +17,176 @@ export const parseNodesCommon = (text) => {
     if (!decoded || decoded.length < 5 || /[\x00-\x08]/.test(decoded)) decoded = text;
 
     // 1. 处理以换行分隔的 URI Scheme
-    const linkRegex = /(vmess|vless|ss|ssr|trojan|hysteria|hysteria2|tuic|juicity|naive):\/\/[^\s\n"']+/gi;
+    const linkRegex = /(vmess|vless|ss|ssr|trojan|hysteria|hysteria2|tuic|juicity|naive|anytls):\/\/[^\s\n"']+/gi;
     const matches = decoded.match(linkRegex);
     if (matches) {
         for (const match of matches) {
             const trimLine = match.trim();
             try {
                 let node = { origLink: trimLine, type: 'raw' };
+
+                // === VMess 特殊处理 (Base64 JSON) ===
                 if (trimLine.startsWith('vmess://')) {
                     const b64 = trimLine.substring(8);
                     const c = JSON.parse(safeBase64Decode(b64));
                     node.name = c.ps; node.type = 'vmess';
-                    // 关键修复：从 JSON 完整解析 vmess 字段，供 Clash 使用
-                    node.server = c.add; node.port = c.port; node.uuid = c.id;
-                    node.cipher = c.scy || "auto"; node.tls = c.tls === "tls";
-                    node.network = c.net;
-                    if (c.net === 'ws') {
-                        node['ws-opts'] = { path: c.path || '/', headers: { Host: c.host || '' } };
+                    node.server = c.add; node.port = parseInt(c.port) || c.port; node.uuid = c.id;
+                    node.cipher = c.scy || "auto"; node.alterId = parseInt(c.aid) || 0;
+                    node.tls = c.tls === "tls" || c.tls === true;
+                    node.network = c.net || 'tcp';
+                    node.sni = c.sni || '';
+                    node['skip-cert-verify'] = c.insecure === '1' || c.insecure === 1 || c.insecure === true;
+                    if (c.net === 'ws' || node.network === 'ws') {
+                        node['ws-opts'] = {
+                            path: c.path || '/',
+                            headers: { Host: c.host || c.sni || '' }
+                        };
                     }
-                } else {
-                    const url = new URL(trimLine);
-                    node.name = decodeURIComponent(url.hash.substring(1));
-                    node.type = url.protocol.replace(':', '');
-                    // 处理用户信息 (user:pass 或 user)
-                    if (url.username) {
-                        if (node.type === 'vmess' || node.type === 'vless') node.uuid = url.username;
-                        else if (node.type === 'ss') {
-                            // ss://base64@...
-                            if (!url.password && url.username.includes(':')) {
-                                // 极少数未编码情况
-                                const p = url.username.split(':'); node.cipher = p[0]; node.password = p[1];
-                            } else {
-                                // 尝试解码
-                                try {
-                                    const userPart = safeBase64Decode(url.username);
-                                    if (userPart.includes(':')) {
-                                        const p = userPart.split(':'); node.cipher = p[0]; node.password = p[1];
-                                    }
-                                } catch (e) { node.password = url.username; }
-                            }
-                        }
-                        else node.password = url.username;
+                    if (c.net === 'grpc') {
+                        node['grpc-opts'] = { 'grpc-service-name': c.path || '' };
                     }
-                    node.server = url.hostname; node.port = url.port;
+                    addNode(node);
+                    continue;
+                }
 
-                    // 解析参数
-                    const params = url.searchParams;
-                    if (params.has('sni')) node.sni = params.get('sni');
-                    if (params.has('peer')) node.sni = params.get('peer');
-                    if (params.has('security')) node.tls = params.get('security') === 'tls';
-                    if (params.has('type')) node.network = params.get('type');
-                    if (params.has('flow')) node.flow = params.get('flow');
-                    if (params.has('fp')) node['client-fingerprint'] = params.get('fp');
-                    if (params.has('path')) {
-                        if (!node['ws-opts']) node['ws-opts'] = {};
-                        node['ws-opts'].path = params.get('path');
-                    }
-                    if (params.has('host')) {
-                        if (!node['ws-opts']) node['ws-opts'] = {};
-                        if (!node['ws-opts'].headers) node['ws-opts'].headers = {};
-                        node['ws-opts'].headers.Host = params.get('host');
+                // === 其他协议使用 URL 解析 ===
+                const url = new URL(trimLine);
+                node.name = decodeURIComponent(url.hash.substring(1) || 'Node');
+                node.type = url.protocol.replace(':', '');
+                node.server = url.hostname;
+                node.port = parseInt(url.port) || 443;
+                const params = url.searchParams;
+
+                // 通用参数解析
+                if (params.has('sni')) node.sni = params.get('sni');
+                if (params.has('peer')) node.sni = params.get('peer');
+                if (params.has('security')) {
+                    const sec = params.get('security');
+                    node.tls = sec === 'tls' || sec === 'reality';
+                    if (sec === 'reality') node.realityEnabled = true;
+                }
+                if (params.has('type')) node.network = params.get('type');
+                if (params.has('flow')) node.flow = params.get('flow');
+                if (params.has('fp')) node['client-fingerprint'] = params.get('fp');
+                if (params.has('alpn')) node.alpn = params.get('alpn');
+                if (params.has('insecure') || params.has('allowInsecure')) {
+                    node['skip-cert-verify'] = params.get('insecure') === '1' || params.get('allowInsecure') === '1';
+                }
+
+                // Reality 参数
+                if (params.has('pbk')) {
+                    node.reality = { publicKey: params.get('pbk') };
+                    if (params.has('sid')) node.reality.shortId = params.get('sid');
+                    node.tls = true;
+                }
+
+                // WS 参数
+                if (params.has('path')) {
+                    if (!node['ws-opts']) node['ws-opts'] = { headers: {} };
+                    node['ws-opts'].path = params.get('path');
+                }
+                if (params.has('host')) {
+                    if (!node['ws-opts']) node['ws-opts'] = { headers: {} };
+                    if (!node['ws-opts'].headers) node['ws-opts'].headers = {};
+                    node['ws-opts'].headers.Host = params.get('host');
+                }
+
+                // === VLESS ===
+                if (node.type === 'vless') {
+                    node.uuid = url.username;
+                    if (!node.network) node.network = 'tcp';
+                }
+
+                // === Trojan ===
+                else if (node.type === 'trojan') {
+                    node.password = decodeURIComponent(url.username);
+                    if (!node.tls) node.tls = true; // Trojan 默认 TLS
+                }
+
+                // === Shadowsocks ===
+                else if (node.type === 'ss') {
+                    // ss://base64(cipher:password)@server:port#name
+                    // 或 ss://cipher:password@server:port#name (非标准)
+                    const userPart = url.username;
+                    if (userPart.includes(':')) {
+                        // 非编码格式
+                        const parts = userPart.split(':');
+                        node.cipher = parts[0];
+                        node.password = parts.slice(1).join(':');
+                    } else {
+                        // Base64 编码格式
+                        try {
+                            const decoded = safeBase64Decode(userPart);
+                            if (decoded.includes(':')) {
+                                const parts = decoded.split(':');
+                                node.cipher = parts[0];
+                                node.password = parts.slice(1).join(':');
+                            } else {
+                                node.password = decoded;
+                            }
+                        } catch (e) {
+                            node.password = userPart;
+                        }
                     }
                 }
+
+                // === Hysteria2 ===
+                else if (node.type === 'hysteria2' || node.type === 'hysteria') {
+                    node.type = 'hysteria2'; // 统一为 hysteria2
+                    node.password = decodeURIComponent(url.username);
+                    if (params.has('obfs')) node.obfs = params.get('obfs');
+                    if (params.has('obfs-password')) node['obfs-password'] = params.get('obfs-password');
+                    if (params.has('mport')) node.ports = params.get('mport');
+                }
+
+                // === TUIC ===
+                else if (node.type === 'tuic') {
+                    // tuic://uuid:password@server:port 或 tuic://uuid%3Apassword@server:port
+                    const userPart = decodeURIComponent(url.username);
+                    if (userPart.includes(':')) {
+                        const parts = userPart.split(':');
+                        node.uuid = parts[0];
+                        node.password = parts.slice(1).join(':');
+                    } else {
+                        node.uuid = userPart;
+                        node.password = url.password || '';
+                    }
+                    if (params.has('congestion_control')) {
+                        node['congestion-controller'] = params.get('congestion_control');
+                    }
+                    if (params.has('udp_relay_mode')) {
+                        node['udp-relay-mode'] = params.get('udp_relay_mode');
+                    } else {
+                        node['udp-relay-mode'] = 'native';
+                    }
+                }
+
+                // === AnyTLS ===
+                else if (node.type === 'anytls') {
+                    node.password = decodeURIComponent(url.username);
+                    node.udp = true;
+                    if (!node['client-fingerprint']) node['client-fingerprint'] = 'chrome';
+                }
+
                 addNode(node);
-            } catch (e) { }
+            } catch (e) {
+                console.error('Parse error:', e.message, trimLine);
+            }
         }
     }
 
-    // 2. 处理 Clash YAML 格式
+    // 2. 处理 Clash YAML 格式 (仅在 URI 解析失败时)
     if (nodes.length < 1 && (decoded.includes('proxies:') || decoded.includes('name:'))) {
         try {
             const lines = decoded.split(/\r?\n/);
             let inProxyBlock = false; let currentBlock = [];
             const processYamlBlock = (block) => {
                 const getVal = (k) => {
-                    const reg = new RegExp(`${k}:\\s*(?:['"](.*?)['"]|(.*?))(?:$|#|,|})`, 'i');
+                    const reg = new RegExp(`${k}:\\s*(?:['"](.+?)['"]|([^\\s#,}]+))`, 'i');
                     const line = block.find(l => reg.test(l));
                     if (!line) return undefined;
-                    const m = line.match(reg); return (m[1] || m[2]).trim();
+                    const m = line.match(reg);
+                    return (m[1] || m[2] || '').trim();
                 };
                 let type = getVal('type');
                 if (!type || ['url-test', 'selector', 'fallback', 'direct', 'reject', 'load-balance'].includes(type)) return;
@@ -109,7 +201,7 @@ export const parseNodesCommon = (text) => {
                 };
                 const findInBlock = (key) => {
                     const line = block.find(l => l.includes(key)); if (!line) return undefined;
-                    const m = line.match(new RegExp(`${key}:\\s*(?:['"](.*?)['"]|([^\\s{]+))`));
+                    const m = line.match(new RegExp(`${key}:\\s*(?:['"](.+?)['"]|([^\\s{]+))`));
                     return m ? (m[1] || m[2]).trim() : undefined;
                 }
                 if (node.network === 'ws' || block.some(l => l.includes('ws-opts'))) {

@@ -21,8 +21,10 @@ export const generateNodeLink = (node) => {
         if (node.type === 'vmess') {
             const vmessObj = {
                 v: "2", ps: node.name, add: node.server, port: node.port, id: node.uuid,
-                aid: 0, scy: node.cipher || "auto", net: node.network || "tcp", type: "none", tls: node.tls ? "tls" : ""
+                aid: node.alterId || 0, scy: node.cipher || "auto", net: node.network || "tcp", type: "none",
+                tls: node.tls ? "tls" : ""
             };
+            if (node.sni) vmessObj.sni = node.sni;
             if (node['ws-opts']) {
                 vmessObj.net = "ws"; vmessObj.path = node['ws-opts'].path;
                 if (node['ws-opts'].headers && node['ws-opts'].headers.Host) vmessObj.host = node['ws-opts'].headers.Host;
@@ -31,16 +33,20 @@ export const generateNodeLink = (node) => {
         }
         if (node.type === 'vless' || node.type === 'trojan') {
             const params = new URLSearchParams();
-            params.set('security', node.tls ? (node.reality ? 'reality' : 'tls') : 'none');
-            if (node.network) params.set('type', node.network); if (node.flow) params.set('flow', node.flow);
+            if (node.reality && node.reality.publicKey) {
+                params.set('security', 'reality');
+                params.set('pbk', node.reality.publicKey);
+                if (node.reality.shortId) params.set('sid', node.reality.shortId);
+            } else {
+                params.set('security', node.tls ? 'tls' : 'none');
+            }
+            if (node.network) params.set('type', node.network);
+            if (node.flow) params.set('flow', node.flow);
             if (node.sni || node.servername) params.set('sni', node.sni || node.servername);
             if (node['client-fingerprint']) params.set('fp', node['client-fingerprint']);
             if (node.network === 'ws' && node['ws-opts']) {
                 if (node['ws-opts'].path) params.set('path', node['ws-opts'].path);
                 if (node['ws-opts'].headers && node['ws-opts'].headers.Host) params.set('host', node['ws-opts'].headers.Host);
-            }
-            if (node.reality && node.reality.publicKey) {
-                params.set('pbk', node.reality.publicKey); if (node.reality.shortId) params.set('sid', node.reality.shortId);
             }
             const userInfo = (node.type === 'vless') ? node.uuid : (node.password || node.uuid);
             return `${node.type}://${userInfo}@${node.server}:${node.port}?${params.toString()}#${safeName}`;
@@ -50,7 +56,22 @@ export const generateNodeLink = (node) => {
             if (node.sni) params.set('sni', node.sni);
             if (node['skip-cert-verify']) params.set('insecure', '1');
             if (node.obfs) { params.set('obfs', node.obfs); if (node['obfs-password']) params.set('obfs-password', node['obfs-password']); }
+            if (node.ports) params.set('mport', node.ports);
             return `hysteria2://${node.password}@${node.server}:${node.port}?${params.toString()}#${safeName}`;
+        }
+        if (node.type === 'tuic') {
+            const params = new URLSearchParams();
+            if (node.sni) params.set('sni', node.sni);
+            if (node.alpn) params.set('alpn', node.alpn);
+            if (node['skip-cert-verify']) params.set('insecure', '1');
+            if (node['congestion-controller']) params.set('congestion_control', node['congestion-controller']);
+            return `tuic://${encodeURIComponent(node.uuid + ':' + node.password)}@${node.server}:${node.port}?${params.toString()}#${safeName}`;
+        }
+        if (node.type === 'anytls') {
+            const params = new URLSearchParams();
+            if (node.sni) params.set('sni', node.sni);
+            if (node['skip-cert-verify']) params.set('insecure', '1');
+            return `anytls://${node.password}@${node.server}:${node.port}?${params.toString()}#${safeName}`;
         }
         if (node.type === 'ss') {
             const userPart = safeBase64Encode(`${node.cipher}:${node.password}`);
@@ -60,27 +81,44 @@ export const generateNodeLink = (node) => {
     return '';
 }
 
+// --- 辅助：YAML 安全字符串 ---
+const yamlStr = (val) => {
+    if (val === undefined || val === null || val === '') return '""';
+    const str = String(val);
+    // 如果包含特殊字符，使用引号包裹
+    if (/[:\[\]{}&*?|<>=!%@`#,]/.test(str) || str.includes(' ') || str.includes("'") || str.includes('"')) {
+        return `"${str.replace(/"/g, '\\"')}"`;
+    }
+    return str;
+};
+
 // --- 核心：Clash Meta 转换器 ---
 export const toClashProxy = (node) => {
     try {
         if (!node.name || !node.server || !node.port) return null;
-        const common = `  - name: ${node.name}
-    server: ${node.server}
-    port: ${node.port}`;
+        const port = parseInt(node.port) || node.port;
+        const skipCert = node['skip-cert-verify'] === true || node['skip-cert-verify'] === 'true';
 
+        // === Shadowsocks ===
         if (node.type === 'ss') {
             if (!node.cipher || !node.password) return null;
-            return `${common}
+            return `  - name: ${yamlStr(node.name)}
     type: ss
+    server: ${node.server}
+    port: ${port}
     cipher: ${node.cipher}
-    password: ${node.password}`;
+    password: ${yamlStr(node.password)}`;
         }
+
+        // === Trojan ===
         if (node.type === 'trojan') {
             if (!node.password) return null;
-            let res = `${common}
+            let res = `  - name: ${yamlStr(node.name)}
     type: trojan
-    password: ${node.password}
-    skip-cert-verify: ${node['skip-cert-verify'] || false}`;
+    server: ${node.server}
+    port: ${port}
+    password: ${yamlStr(node.password)}
+    skip-cert-verify: ${skipCert}`;
             if (node.sni || node.servername) res += `\n    sni: ${node.sni || node.servername}`;
             if (node.network === 'ws') {
                 res += `\n    network: ws\n    ws-opts:\n      path: ${node['ws-opts']?.path || '/'}`;
@@ -89,62 +127,112 @@ export const toClashProxy = (node) => {
             if (node.udp) res += `\n    udp: true`;
             return res;
         }
+
+        // === VMess ===
         if (node.type === 'vmess') {
             if (!node.uuid) return null;
-            let res = `${common}
+            let res = `  - name: ${yamlStr(node.name)}
     type: vmess
+    server: ${node.server}
+    port: ${port}
     uuid: ${node.uuid}
-    alterId: 0
+    alterId: ${node.alterId || 0}
     cipher: ${node.cipher || 'auto'}
-    tls: ${node.tls ? true : false}
-    skip-cert-verify: ${node['skip-cert-verify'] || false}`;
+    udp: true
+    tls: ${node.tls === true}
+    skip-cert-verify: ${skipCert}`;
+            if (node.sni || node.servername) res += `\n    servername: ${node.sni || node.servername}`;
             if (node.network === 'ws') {
-                res += `
-    network: ws
-    ws-opts:
-      path: ${node['ws-opts']?.path || '/'}
-      headers:
-        Host: ${node['ws-opts']?.headers?.Host || ''}`;
+                res += `\n    network: ws\n    ws-opts:\n      path: ${node['ws-opts']?.path || '/'}`;
+                res += `\n      headers:\n        Host: ${node['ws-opts']?.headers?.Host || ''}`;
             }
             return res;
         }
+
+        // === VLESS ===
         if (node.type === 'vless') {
             if (!node.uuid) return null;
-            let res = `${common}
+            let res = `  - name: ${yamlStr(node.name)}
     type: vless
+    server: ${node.server}
+    port: ${port}
     uuid: ${node.uuid}
-    tls: ${node.tls ? true : false}
-    skip-cert-verify: ${node['skip-cert-verify'] || false}
-    network: ${node.network || 'tcp'}`;
+    tls: ${node.tls === true}
+    network: ${node.network || 'tcp'}
+    skip-cert-verify: ${skipCert}`;
             if (node.flow) res += `\n    flow: ${node.flow}`;
             if (node.sni || node.servername) res += `\n    servername: ${node.sni || node.servername}`;
             if (node['client-fingerprint']) res += `\n    client-fingerprint: ${node['client-fingerprint']}`;
+            // Reality
             if (node.reality && node.reality.publicKey) {
-                res += `\n    reality-opts:
-      public-key: ${node.reality.publicKey}
-      short-id: ${node.reality.shortId || ''}`;
+                res += `\n    reality-opts:\n      public-key: ${node.reality.publicKey}`;
+                if (node.reality.shortId) res += `\n      short-id: ${node.reality.shortId}`;
             }
-            if (node.network === 'ws') {
-                res += `
-    ws-opts:
-      path: ${node['ws-opts']?.path || '/'}
-      headers:
-        Host: ${node['ws-opts']?.headers?.Host || ''}`;
+            // WS
+            if (node.network === 'ws' && node['ws-opts']) {
+                res += `\n    ws-opts:\n      path: ${node['ws-opts']?.path || '/'}`;
+                if (node['ws-opts']?.headers?.Host) res += `\n      headers:\n        Host: ${node['ws-opts'].headers.Host}`;
             }
             return res;
         }
+
+        // === Hysteria2 ===
         if (node.type === 'hysteria2') {
-            let res = `${common}
+            if (!node.password) return null;
+            let res = `  - name: ${yamlStr(node.name)}
     type: hysteria2
-    skip-cert-verify: ${node['skip-cert-verify'] || false}`;
-            if (node.password) res += `\n    password: ${node.password}`;
+    server: ${node.server}
+    port: ${port}
+    password: ${yamlStr(node.password)}
+    skip-cert-verify: ${skipCert}`;
             if (node.sni) res += `\n    sni: ${node.sni}`;
+            res += `\n    alpn:\n      - h3`;
+            // obfs
             if (node.obfs) {
                 res += `\n    obfs: ${node.obfs}`;
-                if (node['obfs-password']) res += `\n    obfs-password: ${node['obfs-password']}`;
+                if (node['obfs-password']) res += `\n    obfs-password: ${yamlStr(node['obfs-password'])}`;
             }
+            // mport (ports)
+            if (node.ports) res += `\n    ports: ${node.ports}`;
             return res;
         }
+
+        // === TUIC ===
+        if (node.type === 'tuic') {
+            if (!node.uuid) return null;
+            let res = `  - name: ${yamlStr(node.name)}
+    type: tuic
+    server: ${node.server}
+    port: ${port}
+    uuid: ${node.uuid}
+    password: ${yamlStr(node.password || '')}
+    skip-cert-verify: ${skipCert}`;
+            if (node.sni) res += `\n    sni: ${node.sni}`;
+            res += `\n    alpn:\n      - h3`;
+            res += `\n    udp-relay-mode: ${node['udp-relay-mode'] || 'native'}`;
+            if (node['congestion-controller']) res += `\n    congestion-controller: ${node['congestion-controller']}`;
+            return res;
+        }
+
+        // === AnyTLS ===
+        if (node.type === 'anytls') {
+            if (!node.password) return null;
+            let res = `  - name: ${yamlStr(node.name)}
+    type: anytls
+    server: ${node.server}
+    port: ${port}
+    password: ${yamlStr(node.password)}
+    client-fingerprint: ${node['client-fingerprint'] || 'chrome'}
+    udp: true
+    skip-cert-verify: ${skipCert}`;
+            if (node.sni) res += `\n    sni: ${node.sni}`;
+            res += `\n    alpn:\n      - h2\n      - http/1.1`;
+            return res;
+        }
+
         return null;
-    } catch (e) { return null; }
+    } catch (e) {
+        console.error('toClashProxy error:', e.message);
+        return null;
+    }
 }
