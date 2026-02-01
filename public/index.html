@@ -830,25 +830,13 @@ dns:
                     const addClashGroup = () => { groupForm.value.clash_config.groups.push({ name: 'NewGroup', type: 'select', proxies: [] }) }
                     const openClashNodeSelector = async (group) => {
                         clashNodeSelector.currentGroup = group; clashNodeSelector.show = true; clashNodeSelector.loading = true;
+                        // 只显示资源名称，不展开节点
                         let allNames = []
                         for (const conf of groupForm.value.config) {
                             const res = resources.value.find(r => r.id === conf.subId)
-                            if (!res) continue;
-                            try {
-                                const checkRes = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: res.url, type: res.type }) })
-                                const d = await checkRes.json()
-                                if (d.success && d.data.nodes) {
-                                    const allowed = (Array.isArray(conf.include) && conf.include.length > 0) ? new Set(conf.include) : 'all';
-                                    for (const n of d.data.nodes) {
-                                        if (allowed === 'all' || allowed.has(n.name)) {
-                                            let name = n.name.trim();
-                                            let i = 1; let oname = name;
-                                            while (allNames.includes(name)) name = `${oname} ${i++}`;
-                                            allNames.push(name)
-                                        }
-                                    }
-                                }
-                            } catch (e) { }
+                            if (res) {
+                                allNames.push(res.name)
+                            }
                         }
                         clashNodeSelector.allNodeNames = allNames
                         clashNodeSelector.tempSelected = [...(group.proxies || [])]

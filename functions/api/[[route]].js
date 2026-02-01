@@ -112,14 +112,54 @@ app.get('/g/:token', async (c) => {
                 }
             }
 
-            // Generate Groups (Strict Filter)
+            // Generate Groups (支持资源名称展开为节点名)
             yaml += "\nproxy-groups:\n";
+
+            // 建立资源名到节点名的映射
+            const resourceToNodes = {};
+            for (const item of targetConfig) {
+                const sub = await c.env.DB.prepare("SELECT name FROM subscriptions WHERE id = ?").bind(item.subId).first();
+                if (sub && sub.name) {
+                    resourceToNodes[sub.name] = [];
+                }
+            }
+            // 填充映射（使用已生成的节点名）
+            for (const item of targetConfig) {
+                const sub = await c.env.DB.prepare("SELECT * FROM subscriptions WHERE id = ?").bind(item.subId).first();
+                if (!sub) continue;
+                const resName = sub.name;
+                const nodes = parseNodesCommon(sub.url || "");
+                let allowed = 'all';
+                if (item.include && Array.isArray(item.include) && item.include.length > 0) allowed = new Set(item.include);
+                for (const node of nodes) {
+                    if (allowed !== 'all' && !allowed.has(node.name)) continue;
+                    // 使用去重后的节点名
+                    if (generatedNodeNames.has(node.name) && resourceToNodes[resName]) {
+                        resourceToNodes[resName].push(node.name);
+                    } else {
+                        // 查找可能重名的节点
+                        for (const gName of generatedNodeNames) {
+                            if (gName === node.name || gName.startsWith(node.name + ' ')) {
+                                if (resourceToNodes[resName] && !resourceToNodes[resName].includes(gName)) {
+                                    resourceToNodes[resName].push(gName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (clashConfig.groups && Array.isArray(clashConfig.groups)) {
                 for (const g of clashConfig.groups) {
                     yaml += `  - name: ${g.name}\n    type: ${g.type}\n    proxies:\n`;
                     if (g.proxies && Array.isArray(g.proxies)) {
                         g.proxies.forEach(p => {
-                            if (generatedNodeNames.has(p) || ['DIRECT', 'REJECT', 'NO-RESOLVE'].includes(p)) {
+                            // 检查是否是资源名称，如果是则展开
+                            if (resourceToNodes[p] && resourceToNodes[p].length > 0) {
+                                resourceToNodes[p].forEach(nodeName => {
+                                    yaml += `      - ${nodeName}\n`;
+                                });
+                            } else if (generatedNodeNames.has(p) || ['DIRECT', 'REJECT', 'NO-RESOLVE'].includes(p)) {
                                 yaml += `      - ${p}\n`;
                             }
                         });
