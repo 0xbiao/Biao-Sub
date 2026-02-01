@@ -92,19 +92,32 @@ const yamlStr = (val) => {
     return str;
 };
 
+// --- 辅助：YAML 服务器地址（处理 IPv6）---
+const yamlServer = (server) => {
+    if (!server) return '""';
+    // 去掉方括号（如果有）
+    let clean = server.replace(/^\[/, '').replace(/\]$/, '');
+    // 如果是 IPv6 地址（包含冒号且不是域名格式），用双引号包裹
+    if (clean.includes(':')) {
+        return `"${clean}"`;
+    }
+    return clean;
+};
+
 // --- 核心：Clash Meta 转换器 ---
 export const toClashProxy = (node) => {
     try {
         if (!node.name || !node.server || !node.port) return null;
         const port = parseInt(node.port) || node.port;
         const skipCert = node['skip-cert-verify'] === true || node['skip-cert-verify'] === 'true';
+        const server = yamlServer(node.server);
 
         // === Shadowsocks ===
         if (node.type === 'ss') {
             if (!node.cipher || !node.password) return null;
             return `  - name: ${yamlStr(node.name)}
     type: ss
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     cipher: ${node.cipher}
     password: ${yamlStr(node.password)}`;
@@ -115,7 +128,7 @@ export const toClashProxy = (node) => {
             if (!node.password) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: trojan
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     password: ${yamlStr(node.password)}
     skip-cert-verify: ${skipCert}`;
@@ -133,7 +146,7 @@ export const toClashProxy = (node) => {
             if (!node.uuid) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: vmess
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     uuid: ${node.uuid}
     alterId: ${node.alterId || 0}
@@ -154,7 +167,7 @@ export const toClashProxy = (node) => {
             if (!node.uuid) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: vless
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     uuid: ${node.uuid}
     tls: ${node.tls === true}
@@ -181,7 +194,7 @@ export const toClashProxy = (node) => {
             if (!node.password) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: hysteria2
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     password: ${yamlStr(node.password)}
     skip-cert-verify: ${skipCert}`;
@@ -202,7 +215,7 @@ export const toClashProxy = (node) => {
             if (!node.uuid) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: tuic
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     uuid: ${node.uuid}
     password: ${yamlStr(node.password || '')}
@@ -219,7 +232,7 @@ export const toClashProxy = (node) => {
             if (!node.password) return null;
             let res = `  - name: ${yamlStr(node.name)}
     type: anytls
-    server: ${node.server}
+    server: ${server}
     port: ${port}
     password: ${yamlStr(node.password)}
     client-fingerprint: ${node['client-fingerprint'] || 'chrome'}
