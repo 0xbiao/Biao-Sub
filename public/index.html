@@ -158,6 +158,9 @@
                                     <button @click="copyGroupLink(group, 'clash')"
                                         class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
                                             class="fa-solid fa-cat"></i> Clash</button>
+                                    <button @click="copyGroupLink(group, 'base64')"
+                                        class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
+                                            class="fa-solid fa-link"></i> V2RayN</button>
 
                                     <button @click="refreshToken(group)" class="btn btn-sm btn-ghost text-warning"
                                         title="刷新密钥"><i class="fa-solid fa-key"></i></button>
@@ -241,7 +244,17 @@
 
                     <!-- Tab 1: 节点资源选择 (Unified) -->
                     <div v-show="groupModal.tab==='base'" class="flex flex-col gap-4">
-                        <div class="text-sm text-slate-400">请勾选要加入此聚合组的资源：</div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-slate-400">请勾选要加入此聚合组的资源：</div>
+                            <div class="flex gap-2">
+                                <button @click="selectAllGroupResources" class="btn btn-xs btn-ghost text-accent">
+                                    <i class="fa-solid fa-check-double"></i> 全选
+                                </button>
+                                <button @click="deselectAllGroupResources" class="btn btn-xs btn-ghost text-warning">
+                                    <i class="fa-solid fa-xmark"></i> 取消全选
+                                </button>
+                            </div>
+                        </div>
                         <div
                             class="max-h-96 overflow-y-auto custom-scrollbar bg-slate-900 rounded-lg border border-slate-700 p-2">
                             <div v-for="res in resources" :key="res.id"
@@ -737,6 +750,14 @@ dns:
                     const getGroupResourceCount = (g) => { return (g.config ? g.config.length : 0); }
                     const getResourceName = (id) => resources.value.find(r => r.id === id)?.name || '未知资源'
 
+                    // 全选/取消全选资源
+                    const selectAllGroupResources = () => {
+                        groupForm.value.config = resources.value.map(r => ({ subId: r.id, include: [] }));
+                    }
+                    const deselectAllGroupResources = () => {
+                        groupForm.value.config = [];
+                    }
+
                     const openNodeSelector = async (res) => {
                         nodeSelector.resourceId = res.id; nodeSelector.resourceName = res.name;
                         nodeSelector.show = true; nodeSelector.loading = true;
@@ -832,7 +853,7 @@ dns:
                         batchMode, selectedResources, selectAllResources, executeBatchDelete,
                         resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
                         groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport,
-                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected,
+                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, addClashGroup, openClashNodeSelector, clashSelectAll, confirmClashNodeSelection,
                         previewModal, previewNodes, copyText, copyAllPreviewNodes,
