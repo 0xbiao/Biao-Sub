@@ -204,13 +204,11 @@
                                 @click="resourceForm.type='node'">单独节点</a>
                         </div>
                         <div v-if="resourceForm.type==='group'">
-                            <textarea v-model="resourceForm.url"
-                                placeholder="请粘贴节点链接 (支持 vmess, vless, ss 等)，每行一个。保存后将作为一个整体管理。"
+                            <textarea v-model="resourceForm.url" placeholder="请粘贴节点链接，每行一个。保存后将作为一个整体管理。"
                                 class="textarea textarea-bordered h-32 w-full bg-slate-900"></textarea>
                         </div>
                         <div v-else>
-                            <input type="text" v-model="resourceForm.url"
-                                placeholder="vmess://... (支持批量粘贴，会自动拆分为多个独立节点)"
+                            <input type="text" v-model="resourceForm.url" placeholder="支持批量粘贴，会自动拆分为多个独立节点"
                                 class="input input-bordered w-full bg-slate-900" />
                         </div>
                     </div>
@@ -532,6 +530,11 @@
                 const openResourceModal = () => { resourceForm.value = { name: '', url: '', type: 'group' }; resourceModal.isEdit = false; resourceModal.show = true }
                 const editResource = (item) => { resourceForm.value = { ...item }; resourceModal.isEdit = true; resourceModal.show = true }
                 const saveResource = async () => {
+                    // 校验：节点组必须填写名称
+                    if (resourceForm.value.type === 'group' && (!resourceForm.value.name || !resourceForm.value.name.trim())) {
+                        showToast('节点组必须填写名称', 'error');
+                        return;
+                    }
                     submitting.value = true
                     const method = resourceModal.isEdit ? 'PUT' : 'POST'
                     const url = resourceModal.isEdit ? `${API}/subs/${resourceForm.value.id}` : `${API}/subs`

@@ -509,7 +509,15 @@ app.put('/subs/:id', async (c) => {
     await c.env.DB.prepare(query).bind(...args).run(); return c.json({ success: true })
 })
 app.delete('/subs/:id', async (c) => { await c.env.DB.prepare("DELETE FROM subscriptions WHERE id=?").bind(c.req.param('id')).run(); return c.json({ success: true }) })
-app.post('/sort', async (c) => { const { ids } = await c.req.json(); const s = c.env.DB.prepare("UPDATE subscriptions SET sort_order=? WHERE id=?"); await c.env.DB.batch(ids.map((id, i) => s.bind(i, id))); return c.json({ success: true }) })
+app.post('/subs/delete', async (c) => {
+    const { ids } = await c.req.json();
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return c.json({ success: true });
+    // 改用 Batch 删除，更稳定
+    const stmt = c.env.DB.prepare("DELETE FROM subscriptions WHERE id = ?");
+    await c.env.DB.batch(ids.map(id => stmt.bind(id)));
+    return c.json({ success: true })
+})
+
 
 // --- 聚合组管理 ---
 app.get('/groups', async (c) => {
