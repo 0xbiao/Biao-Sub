@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>tailwind.config = { theme: { extend: { colors: { primary: '#6366f1', secondary: '#ec4899', accent: '#1fb2a6', } } } }</script>
     <style>
         body {
@@ -43,6 +44,23 @@
             overflow-wrap: normal;
             overflow-x: scroll;
             font-size: 12px;
+        }
+
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #6366f1 !important;
+        }
+
+        .sortable-drag {
+            background: #1e293b !important;
+        }
+
+        .drag-handle {
+            cursor: grab;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
         }
     </style>
 </head>
@@ -462,8 +480,23 @@
                                     class="btn btn-xs btn-ghost text-warning">清空</button>
                             </div>
                         </div>
+                        <!-- 已选择的节点（可拖动排序） -->
+                        <div v-if="clashNodeSelector.tempSelected.length > 0" class="mb-4">
+                            <div class="text-xs text-slate-400 mb-2">已选择 (拖动排序):</div>
+                            <div ref="clashSelectedList" class="bg-slate-700 rounded p-2 flex flex-wrap gap-2">
+                                <div v-for="nodeName in clashNodeSelector.tempSelected" :key="nodeName"
+                                    :data-id="nodeName" class="badge badge-secondary gap-1 cursor-move drag-handle">
+                                    <i class="fa-solid fa-grip-vertical text-xs opacity-50"></i>
+                                    {{ nodeName }}
+                                    <button @click.stop="removeFromClashSelected(nodeName)"
+                                        class="hover:text-red-400">×</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 可选择的节点 -->
+                        <div class="text-xs text-slate-400 mb-2">可选择:</div>
                         <div
-                            class="max-h-96 overflow-y-auto custom-scrollbar bg-slate-900 rounded p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            class="max-h-64 overflow-y-auto custom-scrollbar bg-slate-900 rounded p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <label v-for="nodeName in clashNodeSelector.allNodeNames" :key="nodeName"
                                 class="flex items-center gap-2 p-2 hover:bg-slate-800 cursor-pointer border border-slate-700 rounded">
                                 <input type="checkbox" :value="nodeName" v-model="clashNodeSelector.tempSelected"
@@ -535,6 +568,7 @@
                     const nodeSelector = reactive({ show: false, loading: false, resourceId: null, resourceName: '', nodes: [], selected: 'all', tempSelected: [] })
                     const clashNodeSelector = reactive({ show: false, loading: false, currentGroup: null, allNodeNames: [], tempSelected: [] })
                     const previewModal = reactive({ show: false, nodes: [] })
+                    const clashSelectedList = ref(null)
 
                     // --- 默认模板数据 ---
                     const defaultHeader = `mixed-port: 7890
@@ -843,10 +877,34 @@ dns:
                         clashNodeSelector.loading = false
                     }
                     const clashSelectAll = () => clashNodeSelector.tempSelected = [...clashNodeSelector.allNodeNames]
+                    const removeFromClashSelected = (name) => {
+                        clashNodeSelector.tempSelected = clashNodeSelector.tempSelected.filter(n => n !== name)
+                    }
                     const confirmClashNodeSelection = () => {
                         if (clashNodeSelector.currentGroup) clashNodeSelector.currentGroup.proxies = [...clashNodeSelector.tempSelected]
                         clashNodeSelector.show = false
                     }
+
+                    // 初始化拖动排序
+                    let clashSortable = null
+                    Vue.watch(() => clashNodeSelector.tempSelected.length, () => {
+                        Vue.nextTick(() => {
+                            if (clashSelectedList.value && clashNodeSelector.tempSelected.length > 0) {
+                                if (clashSortable) clashSortable.destroy()
+                                clashSortable = new Sortable(clashSelectedList.value, {
+                                    animation: 150,
+                                    ghostClass: 'sortable-ghost',
+                                    dragClass: 'sortable-drag',
+                                    onEnd: (evt) => {
+                                        const arr = [...clashNodeSelector.tempSelected]
+                                        const [moved] = arr.splice(evt.oldIndex, 1)
+                                        arr.splice(evt.newIndex, 0, moved)
+                                        clashNodeSelector.tempSelected = arr
+                                    }
+                                })
+                            }
+                        })
+                    })
 
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
@@ -878,7 +936,7 @@ dns:
                         groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport,
                         templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
-                        clashNodeSelector, addClashGroup, openClashNodeSelector, clashSelectAll, confirmClashNodeSelection,
+                        clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
                         previewModal, previewNodes, copyText, copyAllPreviewNodes,
                         openSettings, getProgressClass, isExpired
                     }
