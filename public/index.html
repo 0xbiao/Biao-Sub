@@ -342,6 +342,11 @@
                             <i class="fa-solid fa-circle-info"></i>
                             <span>节点已在“节点/资源选择”中统一管理。此处仅需配置头部、策略组和规则。</span>
                         </div>
+                        <div class="flex justify-end">
+                            <button class="btn btn-sm btn-warning gap-1" @click="saveAsTemplate">
+                                <i class="fa-solid fa-star"></i> 保存为模板
+                            </button>
+                        </div>
                         <div class="collapse collapse-arrow bg-slate-900 border border-slate-700">
                             <input type="checkbox" />
                             <div class="collapse-title text-sm font-medium text-white">头部配置 (Header)</div>
@@ -443,7 +448,7 @@
 
             <!-- Template Selection Modal -->
             <dialog class="modal" :class="{ 'modal-open': templateModal.show }">
-                <div class="modal-box bg-slate-800 border border-slate-700">
+                <div class="modal-box bg-slate-800 border border-slate-700 max-w-2xl">
                     <h3 class="font-bold text-lg text-white mb-4">选择配置模板</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <button @click="selectTemplate('default')"
@@ -464,9 +469,39 @@
                             <div class="font-bold text-white">托管配置</div>
                             <div class="text-xs text-slate-400 text-center">直接粘贴完整YAML<br>(托管模式)</div>
                         </button>
+                        <!-- 我的模板 -->
+                        <div class="card bg-slate-700 border border-slate-600 transition-all p-4 flex flex-col items-center gap-2 relative"
+                            :class="{'bg-slate-600': templateModal.showMyTemplates}">
+                            <button
+                                @click="templateModal.showMyTemplates = !templateModal.showMyTemplates; loadTemplates()"
+                                class="w-full flex flex-col items-center gap-2">
+                                <i class="fa-solid fa-star text-3xl text-yellow-400"></i>
+                                <div class="font-bold text-white">我的模板</div>
+                                <div class="text-xs text-slate-400 text-center">自定义保存的模板<br>(点击展开)</div>
+                            </button>
+                            <!-- 子菜单 -->
+                            <div v-if="templateModal.showMyTemplates"
+                                class="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-600 rounded-lg shadow-xl z-10 p-2 max-h-48 overflow-y-auto">
+                                <div v-if="userTemplates.length === 0" class="text-center text-slate-500 text-sm py-2">
+                                    暂无保存的模板
+                                </div>
+                                <div v-for="tpl in userTemplates" :key="tpl.id"
+                                    class="flex items-center justify-between p-2 hover:bg-slate-700 rounded cursor-pointer group">
+                                    <button @click="selectUserTemplate(tpl)"
+                                        class="flex-1 text-left text-white text-sm">
+                                        <i class="fa-solid fa-file-lines mr-2 text-accent"></i>{{ tpl.name }}
+                                    </button>
+                                    <button @click.stop="deleteTemplate(tpl.id)"
+                                        class="btn btn-xs btn-ghost text-error opacity-0 group-hover:opacity-100">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-action">
-                        <button class="btn btn-ghost" @click="templateModal.show=false">取消</button>
+                        <button class="btn btn-ghost"
+                            @click="templateModal.show=false; templateModal.showMyTemplates=false">取消</button>
                     </div>
                 </div>
             </dialog>
@@ -599,7 +634,8 @@
                     const resourceModal = reactive({ show: false, isEdit: false })
                     const resourceForm = ref({ name: '', url: '', type: 'node' })
                     const groupModal = reactive({ show: false, isEdit: false, tab: 'base' })
-                    const templateModal = reactive({ show: false }) // 新增模板选择模态框
+                    const templateModal = reactive({ show: false, showMyTemplates: false })
+                    const userTemplates = ref([])
                     const groupForm = ref({ id: null, name: '', config: [], clash_config: { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' } })
                     const groupNameError = ref(false)
                     const batchMode = ref(false)
@@ -822,6 +858,60 @@ dns:
 
                         groupForm.value = base
                         groupModal.show = true
+                        templateModal.showMyTemplates = false
+                    }
+
+                    // 模板管理函数
+                    const loadTemplates = async () => {
+                        try {
+                            const res = await authFetch(API + '/templates')
+                            const d = await res.json()
+                            if (d.success) userTemplates.value = d.data || []
+                        } catch (e) { console.error('加载模板失败', e) }
+                    }
+
+                    const selectUserTemplate = (tpl) => {
+                        templateModal.show = false
+                        templateModal.showMyTemplates = false
+                        groupNameError.value = false; groupModal.isEdit = false; groupModal.tab = 'base'
+
+                        const base = {
+                            name: '',
+                            config: [],
+                            clash_config: {
+                                mode: 'generate',
+                                resources: [],
+                                header: tpl.header || '',
+                                groups: tpl.groups || [],
+                                rules: tpl.rules || '',
+                                raw_yaml: ''
+                            }
+                        }
+                        groupForm.value = base
+                        groupModal.show = true
+                        showToast(`已应用模板: ${tpl.name}`)
+                    }
+
+                    const deleteTemplate = async (id) => {
+                        if (!confirm('确定删除此模板?')) return
+                        await authFetch(API + '/templates/' + id, { method: 'DELETE' })
+                        loadTemplates()
+                        showToast('模板已删除')
+                    }
+
+                    const saveAsTemplate = async () => {
+                        const name = prompt('请输入模板名称:')
+                        if (!name) return
+                        await authFetch(API + '/templates', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                name,
+                                header: groupForm.value.clash_config.header,
+                                groups: groupForm.value.clash_config.groups,
+                                rules: groupForm.value.clash_config.rules
+                            })
+                        })
+                        showToast(`模板 "${name}" 保存成功`)
                     }
 
                     const editGroup = (group) => {
@@ -1071,7 +1161,7 @@ dns:
                         batchMode, selectedResources, selectAllResources, executeBatchDelete,
                         resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
                         groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport, handleRawYamlUpload,
-                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy, groupResourceListEl,
+                        templateModal, selectTemplate, userTemplates, loadTemplates, selectUserTemplate, deleteTemplate, saveAsTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy, groupResourceListEl,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
                         previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl,
