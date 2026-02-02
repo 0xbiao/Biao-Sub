@@ -271,6 +271,13 @@ app.put('/groups/:id', async (c) => {
     await c.env.DB.prepare(query).bind(...args).run(); return c.json({ success: true })
 })
 app.delete('/groups/:id', async (c) => { await c.env.DB.prepare("DELETE FROM groups WHERE id=?").bind(c.req.param('id')).run(); return c.json({ success: true }) })
+app.post('/groups/reorder', async (c) => {
+    const { order } = await c.req.json();
+    if (!order || !Array.isArray(order)) return c.json({ success: false, error: 'Invalid order' });
+    const stmt = c.env.DB.prepare("UPDATE groups SET sort_order=? WHERE id=?");
+    await c.env.DB.batch(order.map((id, idx) => stmt.bind(idx, id)));
+    return c.json({ success: true });
+})
 
 // --- 模板管理 ---
 app.get('/templates', async (c) => {

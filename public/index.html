@@ -165,30 +165,35 @@
                     <button @click="openGroupModal()" class="btn btn-accent btn-sm text-white"><i
                             class="fa-solid fa-plus"></i> 新建聚合组</button>
                 </div>
-                <div class="grid grid-cols-1 gap-6">
-                    <div v-for="group in groups" :key="group.id"
+                <div class="grid grid-cols-1 gap-6" ref="groupListEl">
+                    <div v-for="group in groups" :key="group.id" :data-id="group.id"
                         class="card bg-slate-800/50 border border-slate-700 shadow-xl">
                         <div class="card-body p-5">
                             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div>
-                                    <h2 class="card-title text-lg text-accent">{{ group.name }}</h2>
-                                    <div class="text-xs text-slate-500 mt-1">包含资源: <span class="text-slate-300">{{
-                                            getGroupResourceCount(group) }}</span> 个</div>
-                                </div>
-                                <div class="flex gap-2 flex-wrap">
-                                    <button @click="copyGroupLink(group, 'clash')"
-                                        class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
-                                            class="fa-solid fa-cat"></i> Clash</button>
-                                    <button @click="copyGroupLink(group, 'base64')"
-                                        class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
-                                            class="fa-solid fa-link"></i> V2RayN</button>
+                                <div class="flex items-center gap-3">
+                                    <i
+                                        class="fa-solid fa-grip-vertical drag-handle text-slate-600 cursor-move hover:text-slate-400"></i>
+                                    <div>
+                                        <h2 class="card-title text-lg text-accent">{{ group.name }}</h2>
+                                        <div class="text-xs text-slate-500 mt-1">包含资源: <span class="text-slate-300">{{
+                                                getGroupResourceCount(group) }}</span> 个</div>
+                                    </div>
+                                    <div class="flex gap-2 flex-wrap">
+                                        <button @click="copyGroupLink(group, 'clash')"
+                                            class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
+                                                class="fa-solid fa-cat"></i> Clash</button>
+                                        <button @click="copyGroupLink(group, 'base64')"
+                                            class="btn btn-sm bg-[#1e1e1e] hover:bg-[#2d2d2d] text-slate-400 border-slate-600"><i
+                                                class="fa-solid fa-link"></i> V2RayN</button>
 
-                                    <button @click="refreshToken(group)" class="btn btn-sm btn-ghost text-warning"
-                                        title="刷新密钥"><i class="fa-solid fa-key"></i></button>
-                                    <button @click="editGroup(group)" class="btn btn-sm btn-ghost"><i
-                                            class="fa-solid fa-pen"></i></button>
-                                    <button @click="deleteGroup(group.id)" class="btn btn-sm btn-ghost text-error"><i
-                                            class="fa-solid fa-trash"></i></button>
+                                        <button @click="refreshToken(group)" class="btn btn-sm btn-ghost text-warning"
+                                            title="刷新密钥"><i class="fa-solid fa-key"></i></button>
+                                        <button @click="editGroup(group)" class="btn btn-sm btn-ghost"><i
+                                                class="fa-solid fa-pen"></i></button>
+                                        <button @click="deleteGroup(group.id)"
+                                            class="btn btn-sm btn-ghost text-error"><i
+                                                class="fa-solid fa-trash"></i></button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="divider my-1"></div>
@@ -205,7 +210,8 @@
                             <div v-else class="text-xs text-slate-600 italic">V2Ray: 未选择资源</div>
 
                             <div class="mt-2 text-xs" v-if="group.clash_config">
-                                <span v-if="group.clash_config.mode === 'raw'" class="text-success">Clash: 托管配置模式</span>
+                                <span v-if="group.clash_config.mode === 'raw'" class="text-success">Clash:
+                                    托管配置模式</span>
                                 <span v-else class="text-slate-500">Clash: 资源 {{group.clash_config.resources ?
                                     group.clash_config.resources.length : 0}} 个</span>
                             </div>
@@ -385,7 +391,8 @@
                                             <i class="fa-solid fa-list-check mr-1"></i> 选择节点
                                         </button>
                                         <span class="text-xs text-slate-400">
-                                            已选: <span class="text-accent font-bold">{{ g.proxies && g.proxies.length > 0
+                                            已选: <span class="text-accent font-bold">{{ g.proxies && g.proxies.length
+                                                > 0
                                                 ? g.proxies.length : '全部' }}</span>
                                         </span>
                                     </div>
@@ -616,27 +623,6 @@
                         <i class="fa-solid fa-gear text-accent"></i> 系统设置
                     </h3>
 
-                    <!-- 修改密码 -->
-                    <div class="collapse collapse-arrow bg-slate-900 border border-slate-700 mb-3">
-                        <input type="checkbox" />
-                        <div class="collapse-title text-sm font-medium text-white flex items-center gap-2">
-                            <i class="fa-solid fa-key text-warning"></i> 修改管理密码
-                        </div>
-                        <div class="collapse-content">
-                            <div class="flex flex-col gap-3 pt-2">
-                                <input type="password" v-model="settingsModal.newPassword" placeholder="输入新密码"
-                                    class="input input-bordered input-sm bg-slate-800" />
-                                <input type="password" v-model="settingsModal.confirmPassword" placeholder="确认新密码"
-                                    class="input input-bordered input-sm bg-slate-800" />
-                                <button @click="changePassword" class="btn btn-sm btn-warning">
-                                    <i class="fa-solid fa-save"></i> 保存密码
-                                </button>
-                                <div class="text-xs text-slate-500">
-                                    <i class="fa-solid fa-info-circle"></i> 修改后需要在 Cloudflare 环境变量中同步更新 ADMIN_PASSWORD
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- 数据备份 -->
                     <div class="collapse collapse-arrow bg-slate-900 border border-slate-700 mb-3">
@@ -685,7 +671,8 @@
 
             <div v-if="toast.show" class="toast toast-bottom toast-end z-50">
                 <div class="alert shadow-lg text-white"
-                    :class="toast.type === 'success' ? 'alert-success' : 'alert-error'"><span>{{ toast.message }}</span>
+                    :class="toast.type === 'success' ? 'alert-success' : 'alert-error'"><span>{{ toast.message
+                        }}</span>
                 </div>
             </div>
         </div>
@@ -723,6 +710,7 @@
                     const resourceListEl = ref(null)
                     const previewListEl = ref(null)
                     const groupResourceListEl = ref(null)
+                    const groupListEl = ref(null)
 
                     // --- 默认模板数据 ---
                     const defaultHeader = `mixed-port: 7890
@@ -1189,6 +1177,33 @@ dns:
                         })
                     })
 
+                    // 聚合组拖动排序
+                    let groupSortable = null
+                    Vue.onMounted(() => {
+                        Vue.nextTick(() => {
+                            if (groupListEl.value) {
+                                groupSortable = new Sortable(groupListEl.value, {
+                                    animation: 150,
+                                    handle: '.drag-handle',
+                                    ghostClass: 'sortable-ghost',
+                                    dragClass: 'sortable-drag',
+                                    onEnd: async (evt) => {
+                                        const arr = [...groups.value]
+                                        const [moved] = arr.splice(evt.oldIndex, 1)
+                                        arr.splice(evt.newIndex, 0, moved)
+                                        groups.value = arr
+                                        // 保存排序到后端
+                                        await authFetch(API + '/groups/reorder', {
+                                            method: 'POST',
+                                            body: JSON.stringify({ order: arr.map(g => g.id) })
+                                        })
+                                        showToast('排序已保存')
+                                    }
+                                })
+                            }
+                        })
+                    })
+
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
                         if (!file) return;
@@ -1324,8 +1339,8 @@ dns:
                         templateModal, selectTemplate, userTemplates, loadTemplates, selectUserTemplate, deleteTemplate, saveAsTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy, groupResourceListEl,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
-                        previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl,
-                        settingsModal, openSettings, changePassword, exportBackup, importBackup, getProgressClass, isExpired
+                        previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl, groupListEl,
+                        settingsModal, openSettings, exportBackup, importBackup, getProgressClass, isExpired
                     }
                 } catch (e) {
                     alert("JS Error: " + e.message + "\n\n" + e.stack);
