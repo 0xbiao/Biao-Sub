@@ -254,13 +254,12 @@
                             @input="groupNameError = false" />
                     </div>
 
-                    <div class="tabs tabs-boxed bg-slate-900 mb-4">
+                    <!-- 托管模式下隐藏 Tab，只显示名称和上传区域 -->
+                    <div v-if="groupForm.clash_config.mode !== 'raw'" class="tabs tabs-boxed bg-slate-900 mb-4">
                         <a class="tab" :class="{'tab-active': groupModal.tab==='base'}"
                             @click="groupModal.tab='base'">节点/资源选择</a>
                         <a class="tab" :class="{'tab-active': groupModal.tab==='clash'}"
                             @click="groupModal.tab='clash'">Clash 配置</a>
-                        <a class="tab" :class="{'tab-active': groupModal.tab==='raw'}"
-                            @click="groupModal.tab='raw'">托管配置 (Raw)</a>
                     </div>
 
                     <!-- Tab 1: 节点资源选择 (Unified) -->
@@ -405,21 +404,32 @@
                         </div>
                     </div>
 
-                    <!-- Tab 3: Raw Mode -->
-                    <div v-show="groupModal.tab==='raw'" class="flex flex-col gap-4">
-                        <div class="alert alert-warning shadow-lg text-xs">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            <span>启用托管模式后，Clash 订阅将直接返回下方内容，忽略上述所有自动生成配置。</span>
+                    <!-- Tab 3: Raw Mode (托管配置) -->
+                    <div v-show="groupForm.clash_config.mode === 'raw'" class="flex flex-col gap-4">
+                        <div class="alert alert-info shadow-lg text-xs">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>托管模式：上传或粘贴完整的 Clash YAML 配置文件，订阅将直接返回此内容。</span>
                         </div>
-                        <label class="label cursor-pointer justify-start gap-4">
-                            <span class="label-text text-white">启用托管模式</span>
-                            <input type="checkbox" class="toggle toggle-accent"
-                                :checked="groupForm.clash_config.mode === 'raw'"
-                                @change="groupForm.clash_config.mode = $event.target.checked ? 'raw' : 'generate'" />
-                        </label>
-                        <div v-if="groupForm.clash_config.mode === 'raw'">
-                            <textarea v-model="groupForm.clash_config.raw_yaml"
-                                class="code-editor w-full h-96 bg-[#1e1e1e] text-slate-300 p-4 outline-none resize-y rounded border border-slate-700"></textarea>
+
+                        <!-- 文件上传区域 -->
+                        <div class="flex flex-col gap-3">
+                            <label class="text-sm text-slate-400">上传 YAML 配置文件：</label>
+                            <div class="flex gap-2">
+                                <input type="file" accept=".yaml,.yml,.txt" @change="handleRawYamlUpload"
+                                    class="file-input file-input-bordered file-input-accent w-full max-w-xs bg-slate-900" />
+                                <button v-if="groupForm.clash_config.raw_yaml"
+                                    @click="groupForm.clash_config.raw_yaml = ''; groupForm.name = ''"
+                                    class="btn btn-ghost btn-sm text-error">
+                                    <i class="fa-solid fa-trash"></i> 清空
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- YAML 内容预览/编辑 -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm text-slate-400">配置内容：</label>
+                            <textarea v-model="groupForm.clash_config.raw_yaml" placeholder="上传文件或在此粘贴 YAML 配置内容..."
+                                class="code-editor w-full h-80 bg-[#1e1e1e] text-slate-300 p-4 outline-none resize-y rounded border border-slate-700"></textarea>
                         </div>
                     </div>
 
@@ -1024,6 +1034,25 @@ dns:
                         event.target.value = '';
                     }
 
+                    // 托管配置文件上传，自动读取文件名作为聚合组名称
+                    const handleRawYamlUpload = (event) => {
+                        const file = event.target.files[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) { showToast("文件过大，最大支持 5MB", "error"); return; }
+
+                        // 从文件名提取聚合组名称（去掉扩展名）
+                        const fileName = file.name.replace(/\.(yaml|yml|txt)$/i, '');
+                        groupForm.value.name = fileName;
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            groupForm.value.clash_config.raw_yaml = e.target.result;
+                            showToast(`已导入: ${fileName}`);
+                        };
+                        reader.readAsText(file);
+                        event.target.value = '';
+                    }
+
                     const previewNodes = async (item) => {
                         const res = await authFetch(API + '/check', { method: 'POST', body: JSON.stringify({ url: item.url, type: item.type }) })
                         const d = await res.json()
@@ -1041,7 +1070,7 @@ dns:
                         currentTab, resources, groups, submitting, toast,
                         batchMode, selectedResources, selectAllResources, executeBatchDelete,
                         resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
-                        groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport,
+                        groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport, handleRawYamlUpload,
                         templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy, groupResourceListEl,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
