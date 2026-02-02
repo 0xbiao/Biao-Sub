@@ -1108,52 +1108,62 @@ dns:
 
                     // 资源池拖动排序
                     let resourceSortable = null
-                    Vue.onMounted(() => {
-                        Vue.nextTick(() => {
-                            if (resourceListEl.value) {
-                                resourceSortable = new Sortable(resourceListEl.value, {
-                                    animation: 150,
-                                    handle: '.drag-handle',
-                                    ghostClass: 'sortable-ghost',
-                                    dragClass: 'sortable-drag',
-                                    onEnd: (evt) => {
-                                        const arr = [...resources.value]
-                                        const [moved] = arr.splice(evt.oldIndex, 1)
-                                        arr.splice(evt.newIndex, 0, moved)
-                                        resources.value = arr
-                                        // 保存排序到后端
-                                        authFetch(API + '/subs/reorder', {
-                                            method: 'POST',
-                                            body: JSON.stringify({ order: arr.map(r => r.id) })
-                                        })
-                                    }
+                    const initResourceSortable = () => {
+                        if (!resourceListEl.value) return
+                        if (resourceSortable) resourceSortable.destroy()
+                        resourceSortable = new Sortable(resourceListEl.value, {
+                            animation: 150,
+                            handle: '.drag-handle',
+                            ghostClass: 'sortable-ghost',
+                            dragClass: 'sortable-drag',
+                            onStart: () => {
+                                resourceSortable._snapshot = [...resources.value]
+                            },
+                            onEnd: (evt) => {
+                                const arr = resourceSortable._snapshot || [...resources.value]
+                                const [moved] = arr.splice(evt.oldIndex, 1)
+                                arr.splice(evt.newIndex, 0, moved)
+                                resourceSortable.destroy()
+                                resourceSortable = null
+                                resources.value = arr
+                                // 保存排序到后端
+                                authFetch(API + '/subs/reorder', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ order: arr.map(r => r.id) })
                                 })
+                                showToast('排序已保存')
+                                Vue.nextTick(initResourceSortable)
                             }
                         })
-                    })
+                    }
+                    Vue.onMounted(() => Vue.nextTick(initResourceSortable))
 
                     // 节点预览拖动排序
                     let previewSortable = null
+                    const initPreviewSortable = () => {
+                        if (!previewListEl.value || !previewModal.show) return
+                        if (previewSortable) previewSortable.destroy()
+                        previewSortable = new Sortable(previewListEl.value, {
+                            animation: 150,
+                            handle: '.drag-handle',
+                            ghostClass: 'sortable-ghost',
+                            dragClass: 'sortable-drag',
+                            onStart: () => {
+                                previewSortable._snapshot = [...previewModal.nodes]
+                            },
+                            onEnd: (evt) => {
+                                const arr = previewSortable._snapshot || [...previewModal.nodes]
+                                const [moved] = arr.splice(evt.oldIndex, 1)
+                                arr.splice(evt.newIndex, 0, moved)
+                                previewSortable.destroy()
+                                previewSortable = null
+                                previewModal.nodes = arr
+                                Vue.nextTick(initPreviewSortable)
+                            }
+                        })
+                    }
                     Vue.watch(() => previewModal.show, (show) => {
-                        if (show) {
-                            Vue.nextTick(() => {
-                                if (previewListEl.value) {
-                                    if (previewSortable) previewSortable.destroy()
-                                    previewSortable = new Sortable(previewListEl.value, {
-                                        animation: 150,
-                                        handle: '.drag-handle',
-                                        ghostClass: 'sortable-ghost',
-                                        dragClass: 'sortable-drag',
-                                        onEnd: (evt) => {
-                                            const arr = [...previewModal.nodes]
-                                            const [moved] = arr.splice(evt.oldIndex, 1)
-                                            arr.splice(evt.newIndex, 0, moved)
-                                            previewModal.nodes = arr
-                                        }
-                                    })
-                                }
-                            })
-                        }
+                        if (show) Vue.nextTick(initPreviewSortable)
                     })
 
                     // 聚合组资源选择拖动排序
@@ -1179,30 +1189,35 @@ dns:
 
                     // 聚合组拖动排序
                     let groupSortable = null
-                    Vue.onMounted(() => {
-                        Vue.nextTick(() => {
-                            if (groupListEl.value) {
-                                groupSortable = new Sortable(groupListEl.value, {
-                                    animation: 150,
-                                    handle: '.drag-handle',
-                                    ghostClass: 'sortable-ghost',
-                                    dragClass: 'sortable-drag',
-                                    onEnd: async (evt) => {
-                                        const arr = [...groups.value]
-                                        const [moved] = arr.splice(evt.oldIndex, 1)
-                                        arr.splice(evt.newIndex, 0, moved)
-                                        groups.value = arr
-                                        // 保存排序到后端
-                                        await authFetch(API + '/groups/reorder', {
-                                            method: 'POST',
-                                            body: JSON.stringify({ order: arr.map(g => g.id) })
-                                        })
-                                        showToast('排序已保存')
-                                    }
+                    const initGroupSortable = () => {
+                        if (!groupListEl.value) return
+                        if (groupSortable) groupSortable.destroy()
+                        groupSortable = new Sortable(groupListEl.value, {
+                            animation: 150,
+                            handle: '.drag-handle',
+                            ghostClass: 'sortable-ghost',
+                            dragClass: 'sortable-drag',
+                            onStart: () => {
+                                groupSortable._snapshot = [...groups.value]
+                            },
+                            onEnd: async (evt) => {
+                                const arr = groupSortable._snapshot || [...groups.value]
+                                const [moved] = arr.splice(evt.oldIndex, 1)
+                                arr.splice(evt.newIndex, 0, moved)
+                                groupSortable.destroy()
+                                groupSortable = null
+                                groups.value = arr
+                                // 保存排序到后端
+                                await authFetch(API + '/groups/reorder', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ order: arr.map(g => g.id) })
                                 })
+                                showToast('排序已保存')
+                                Vue.nextTick(initGroupSortable)
                             }
                         })
-                    })
+                    }
+                    Vue.onMounted(() => Vue.nextTick(initGroupSortable))
 
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
