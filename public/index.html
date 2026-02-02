@@ -1236,6 +1236,10 @@ dns:
                         })
                     }
                     Vue.onMounted(() => Vue.nextTick(initResourceSortable))
+                    // 监听资源数量变化，重新初始化排序
+                    Vue.watch(() => resources.value.length, () => {
+                        Vue.nextTick(() => setTimeout(initResourceSortable, 100))
+                    })
 
                     // 节点预览拖动排序（仅在排序模式下启用）
                     let previewSortable = null
@@ -1338,6 +1342,10 @@ dns:
                         })
                     }
                     Vue.onMounted(() => Vue.nextTick(initGroupSortable))
+                    // 监听聚合组数量变化，重新初始化排序
+                    Vue.watch(() => groups.value.length, () => {
+                        Vue.nextTick(() => setTimeout(initGroupSortable, 100))
+                    })
 
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
