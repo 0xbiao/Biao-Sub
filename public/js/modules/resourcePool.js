@@ -10,7 +10,7 @@ import {
     previewModal
 } from '../store.js'
 import { authFetch, loadResources, checkResource } from '../api.js'
-import { showToast, copyText } from '../utils.js'
+import { showToast, copyText, updateLinkName, getNameFromLink } from '../utils.js'
 
 // 打开新建资源弹窗
 export const openResourceModal = () => {
@@ -39,15 +39,26 @@ export const saveResource = async () => {
         ? `${API}/subs/${resourceForm.value.id}`
         : `${API}/subs`
 
+    // 如果是单节点且修改了名称，同步到链接
+    let finalUrl = resourceForm.value.url
+    if (resourceForm.value.type === 'node' && resourceForm.value.name && resourceForm.value.name.trim()) {
+        // 获取链接中的原始名称
+        const originalName = getNameFromLink(resourceForm.value.url)
+        // 如果名称有变化，更新链接
+        if (originalName !== resourceForm.value.name.trim()) {
+            finalUrl = updateLinkName(resourceForm.value.url, resourceForm.value.name.trim())
+        }
+    }
+
     let info = null
-    if (resourceForm.value.url) {
+    if (finalUrl) {
         try {
-            const d = await checkResource(resourceForm.value.url, resourceForm.value.type)
+            const d = await checkResource(finalUrl, resourceForm.value.type)
             if (d.success) info = d.data
         } catch (e) { }
     }
 
-    const payload = { ...resourceForm.value, info }
+    const payload = { ...resourceForm.value, url: finalUrl, info }
     await authFetch(url, { method, body: JSON.stringify(payload) })
     resourceModal.show = false
     submitting.value = false
@@ -105,7 +116,9 @@ export const executeBatchDelete = async () => {
 export const previewNodes = async (item) => {
     previewModal.show = true
     previewModal.sortMode = false
+    previewModal.editMode = false
     previewModal.resourceId = item.id
+    previewModal.resourceItem = item
     previewModal.nodes = []
     previewModal.originalNodes = []
 
@@ -131,3 +144,4 @@ export const previewNodes = async (item) => {
         showToast('获取节点失败: ' + e.message, 'error')
     }
 }
+

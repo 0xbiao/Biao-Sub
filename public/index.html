@@ -596,15 +596,30 @@
                             <span class="badge badge-neutral ml-2">{{ previewModal.nodes.length }} 个</span>
                         </h3>
                         <div class="flex gap-2">
-                            <button v-if="!previewModal.sortMode" @click="enterSortMode"
-                                class="btn btn-sm btn-outline btn-accent">
-                                <i class="fa-solid fa-sort"></i> 排序节点
-                            </button>
-                            <button v-if="previewModal.sortMode" @click="saveNodeOrder" class="btn btn-sm btn-success">
-                                <i class="fa-solid fa-save"></i> 保存排序
-                            </button>
-                            <button v-if="previewModal.sortMode" @click="cancelSortMode"
-                                class="btn btn-sm btn-ghost">取消</button>
+                            <!-- 普通模式下显示排序和编辑按钮 -->
+                            <template v-if="!previewModal.sortMode && !previewModal.editMode">
+                                <button @click="enterSortMode" class="btn btn-sm btn-outline btn-accent">
+                                    <i class="fa-solid fa-sort"></i> 排序
+                                </button>
+                                <button v-if="previewModal.resourceItem && previewModal.resourceItem.type === 'group'"
+                                    @click="enterEditMode" class="btn btn-sm btn-outline btn-warning">
+                                    <i class="fa-solid fa-pen"></i> 编辑
+                                </button>
+                            </template>
+                            <!-- 排序模式 -->
+                            <template v-if="previewModal.sortMode">
+                                <button @click="saveNodeOrder" class="btn btn-sm btn-success">
+                                    <i class="fa-solid fa-save"></i> 保存排序
+                                </button>
+                                <button @click="cancelSortMode" class="btn btn-sm btn-ghost">取消</button>
+                            </template>
+                            <!-- 编辑模式 -->
+                            <template v-if="previewModal.editMode">
+                                <button @click="saveNodeEdits" class="btn btn-sm btn-success">
+                                    <i class="fa-solid fa-save"></i> 保存编辑
+                                </button>
+                                <button @click="cancelEditMode" class="btn btn-sm btn-ghost">取消</button>
+                            </template>
                         </div>
                     </div>
 
@@ -613,14 +628,25 @@
                         <span class="text-sm">拖动节点调整顺序，完成后点击"保存排序"</span>
                     </div>
 
+                    <div v-if="previewModal.editMode" class="alert alert-warning mb-3 py-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span class="text-sm">点击删除按钮移除节点，完成后点击"保存编辑"</span>
+                    </div>
+
                     <div ref="previewListEl" class="max-h-96 overflow-y-auto bg-slate-900 rounded p-2">
                         <div v-for="(node, idx) in previewModal.nodes" :key="node.link || idx"
                             class="text-xs text-slate-400 border-b border-slate-700 py-2 flex items-center gap-2"
-                            :class="{'bg-slate-800/50': previewModal.sortMode}">
+                            :class="{'bg-slate-800/50': previewModal.sortMode || previewModal.editMode}">
+                            <!-- 排序模式拖动手柄 -->
                             <div v-if="previewModal.sortMode"
                                 class="drag-handle cursor-move text-slate-500 hover:text-slate-300 flex-shrink-0">
                                 <i class="fa-solid fa-grip-vertical"></i>
                             </div>
+                            <!-- 编辑模式删除按钮 -->
+                            <button v-if="previewModal.editMode" @click="deleteNodeFromGroup(idx)"
+                                class="btn btn-xs btn-circle btn-error flex-shrink-0">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-center">
                                     <span class="text-white font-bold truncate pr-2">{{ node.name }}</span>
@@ -638,6 +664,7 @@
                     </div>
                 </div>
             </dialog>
+
 
             <!-- Settings Modal -->
             <dialog class="modal" :class="{ 'modal-open': settingsModal.show }">

@@ -28,7 +28,9 @@ export const previewModal = reactive({
     show: false,
     nodes: [],
     sortMode: false,
+    editMode: false,
     resourceId: null,
+    resourceItem: null,
     originalNodes: []
 })
 export const settingsModal = reactive({ show: false, newPassword: '', confirmPassword: '' })

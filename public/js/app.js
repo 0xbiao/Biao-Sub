@@ -34,7 +34,8 @@ import {
     handleYamlImport, handleRawYamlUpload
 } from './modules/groupManager.js'
 import {
-    enterSortMode, cancelSortMode, saveNodeOrder, closePreviewModal, copyAllPreviewNodes
+    enterSortMode, cancelSortMode, saveNodeOrder, closePreviewModal, copyAllPreviewNodes,
+    enterEditMode, cancelEditMode, deleteNodeFromGroup, saveNodeEdits
 } from './modules/nodePreview.js'
 import {
     selectUserTemplate, deleteTemplate, saveAsTemplate
@@ -96,6 +97,7 @@ const app = createApp({
 
             // 节点预览
             enterSortMode, cancelSortMode, saveNodeOrder, closePreviewModal, copyAllPreviewNodes,
+            enterEditMode, cancelEditMode, deleteNodeFromGroup, saveNodeEdits,
 
             // 模板
             selectUserTemplate, deleteTemplate, saveAsTemplate, loadTemplates,

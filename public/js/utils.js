@@ -42,3 +42,81 @@ export const downloadFile = (content, filename) => {
     a.click()
     URL.revokeObjectURL(url)
 }
+
+// 安全的 Base64 编码（支持 Unicode）
+export const safeBase64Encode = (str) => {
+    try {
+        return btoa(unescape(encodeURIComponent(str)))
+    } catch (e) {
+        return btoa(str)
+    }
+}
+
+// 安全的 Base64 解码
+export const safeBase64Decode = (str) => {
+    try {
+        // 处理 URL-safe base64
+        let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+        // 补齐 padding
+        while (base64.length % 4) base64 += '='
+        return decodeURIComponent(escape(atob(base64)))
+    } catch (e) {
+        try {
+            return atob(str)
+        } catch (e2) {
+            return str
+        }
+    }
+}
+
+// 更新节点链接中的名称（支持特殊字符和中文）
+export const updateLinkName = (link, newName) => {
+    if (!link || !newName) return link
+
+    try {
+        // VMess 协议: Base64 编码的 JSON
+        if (link.startsWith('vmess://')) {
+            const b64 = link.substring(8)
+            const json = JSON.parse(safeBase64Decode(b64))
+            json.ps = newName
+            return 'vmess://' + safeBase64Encode(JSON.stringify(json))
+        }
+
+        // 其他协议: URL hash 部分存储名称
+        // vless/trojan/ss/ssr/hysteria2/hy2/tuic 等
+        const hashIdx = link.indexOf('#')
+        if (hashIdx !== -1) {
+            // 使用 encodeURIComponent 确保特殊字符正确编码
+            return link.substring(0, hashIdx) + '#' + encodeURIComponent(newName)
+        } else {
+            // 没有 hash，添加一个
+            return link + '#' + encodeURIComponent(newName)
+        }
+    } catch (e) {
+        console.error('updateLinkName error:', e)
+        return link
+    }
+}
+
+// 从链接中提取节点名称
+export const getNameFromLink = (link) => {
+    if (!link) return ''
+
+    try {
+        // VMess 协议
+        if (link.startsWith('vmess://')) {
+            const b64 = link.substring(8)
+            const json = JSON.parse(safeBase64Decode(b64))
+            return json.ps || ''
+        }
+
+        // 其他协议: 从 hash 提取
+        const hashIdx = link.indexOf('#')
+        if (hashIdx !== -1) {
+            return decodeURIComponent(link.substring(hashIdx + 1))
+        }
+    } catch (e) {
+        console.error('getNameFromLink error:', e)
+    }
+    return ''
+}
