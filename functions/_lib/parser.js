@@ -16,8 +16,8 @@ export const parseNodesCommon = (text) => {
     let decoded = deepBase64Decode(text);
     if (!decoded || decoded.length < 5 || /[\x00-\x08]/.test(decoded)) decoded = text;
 
-    // 1. 处理以换行分隔的 URI Scheme
-    const linkRegex = /(vmess|vless|ss|ssr|trojan|hysteria|hysteria2|tuic|juicity|naive|anytls):\/\/[^\s\n"']+/gi;
+    // 1. 处理以换行分隔的 URI Scheme (支持 hy2/hy 短协议名)
+    const linkRegex = /(vmess|vless|ss|ssr|trojan|hysteria2|hysteria|hy2|hy|tuic|juicity|naive|anytls):\/\/[^\s\n"']+/gi;
     const matches = decoded.match(linkRegex);
     if (matches) {
         for (const match of matches) {
@@ -53,6 +53,8 @@ export const parseNodesCommon = (text) => {
                 const url = new URL(trimLine);
                 node.name = decodeURIComponent(url.hash.substring(1) || 'Node');
                 node.type = url.protocol.replace(':', '');
+                // 规范化协议名：hy2/hy -> hysteria2
+                if (node.type === 'hy2' || node.type === 'hy') node.type = 'hysteria2';
                 node.server = url.hostname;
                 node.port = parseInt(url.port) || 443;
                 const params = url.searchParams;
