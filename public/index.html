@@ -609,6 +609,80 @@
                 </div>
             </dialog>
 
+            <!-- Settings Modal -->
+            <dialog class="modal" :class="{ 'modal-open': settingsModal.show }">
+                <div class="modal-box bg-slate-800 border border-slate-700 max-w-lg">
+                    <h3 class="font-bold text-xl text-white mb-6 flex items-center gap-2">
+                        <i class="fa-solid fa-gear text-accent"></i> 系统设置
+                    </h3>
+
+                    <!-- 修改密码 -->
+                    <div class="collapse collapse-arrow bg-slate-900 border border-slate-700 mb-3">
+                        <input type="checkbox" />
+                        <div class="collapse-title text-sm font-medium text-white flex items-center gap-2">
+                            <i class="fa-solid fa-key text-warning"></i> 修改管理密码
+                        </div>
+                        <div class="collapse-content">
+                            <div class="flex flex-col gap-3 pt-2">
+                                <input type="password" v-model="settingsModal.newPassword" placeholder="输入新密码"
+                                    class="input input-bordered input-sm bg-slate-800" />
+                                <input type="password" v-model="settingsModal.confirmPassword" placeholder="确认新密码"
+                                    class="input input-bordered input-sm bg-slate-800" />
+                                <button @click="changePassword" class="btn btn-sm btn-warning">
+                                    <i class="fa-solid fa-save"></i> 保存密码
+                                </button>
+                                <div class="text-xs text-slate-500">
+                                    <i class="fa-solid fa-info-circle"></i> 修改后需要在 Cloudflare 环境变量中同步更新 ADMIN_PASSWORD
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据备份 -->
+                    <div class="collapse collapse-arrow bg-slate-900 border border-slate-700 mb-3">
+                        <input type="checkbox" />
+                        <div class="collapse-title text-sm font-medium text-white flex items-center gap-2">
+                            <i class="fa-solid fa-database text-info"></i> 数据备份
+                        </div>
+                        <div class="collapse-content">
+                            <div class="flex flex-col gap-3 pt-2">
+                                <button @click="exportBackup" class="btn btn-sm btn-info gap-1">
+                                    <i class="fa-solid fa-download"></i> 导出备份
+                                </button>
+                                <div class="divider text-xs">或</div>
+                                <input type="file" accept=".json" @change="importBackup"
+                                    class="file-input file-input-bordered file-input-sm bg-slate-800 w-full" />
+                                <div class="text-xs text-slate-500">
+                                    <i class="fa-solid fa-info-circle"></i> 备份包含：资源池、聚合组、模板
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 关于 -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-yellow-400 text-xl"></i>
+                                <span class="font-bold text-white">BiaoSUB</span>
+                            </div>
+                            <span class="badge badge-accent">v1.0.0</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mb-3">
+                            轻量级订阅聚合管理面板，基于 Cloudflare Pages + D1
+                        </div>
+                        <a href="https://github.com/0xdabiaoge/Biao-Sub" target="_blank"
+                            class="btn btn-sm btn-ghost gap-1 w-full">
+                            <i class="fa-brands fa-github text-lg"></i> GitHub 项目主页
+                        </a>
+                    </div>
+
+                    <div class="modal-action">
+                        <button class="btn btn-ghost" @click="settingsModal.show=false">关闭</button>
+                    </div>
+                </div>
+            </dialog>
+
             <div v-if="toast.show" class="toast toast-bottom toast-end z-50">
                 <div class="alert shadow-lg text-white"
                     :class="toast.type === 'success' ? 'alert-success' : 'alert-error'"><span>{{ toast.message }}</span>
@@ -644,6 +718,7 @@
                     const nodeSelector = reactive({ show: false, loading: false, resourceId: null, resourceName: '', nodes: [], selected: 'all', tempSelected: [] })
                     const clashNodeSelector = reactive({ show: false, loading: false, currentGroup: null, allNodeNames: [], tempSelected: [] })
                     const previewModal = reactive({ show: false, nodes: [] })
+                    const settingsModal = reactive({ show: false, newPassword: '', confirmPassword: '' })
                     const clashSelectedList = ref(null)
                     const resourceListEl = ref(null)
                     const previewListEl = ref(null)
@@ -1150,7 +1225,92 @@ dns:
                         else { showToast('预览失败', 'error') }
                     }
                     const copyAllPreviewNodes = () => { copyText(previewModal.nodes.map(n => n.link).join('\n')) }
-                    const openSettings = () => showToast('功能开发中...')
+
+                    // 设置相关函数
+                    const openSettings = () => {
+                        settingsModal.newPassword = ''
+                        settingsModal.confirmPassword = ''
+                        settingsModal.show = true
+                    }
+
+                    const changePassword = () => {
+                        if (!settingsModal.newPassword) {
+                            showToast('请输入新密码', 'error')
+                            return
+                        }
+                        if (settingsModal.newPassword !== settingsModal.confirmPassword) {
+                            showToast('两次密码输入不一致', 'error')
+                            return
+                        }
+                        // 密码需要在 Cloudflare 环境变量中修改，这里只是提示
+                        const pwd = settingsModal.newPassword
+                        navigator.clipboard.writeText(pwd)
+                        showToast('新密码已复制，请在 Cloudflare 环境变量中更新 ADMIN_PASSWORD')
+                        settingsModal.newPassword = ''
+                        settingsModal.confirmPassword = ''
+                    }
+
+                    const exportBackup = async () => {
+                        try {
+                            const backup = {
+                                version: '1.0.0',
+                                exportTime: new Date().toISOString(),
+                                resources: resources.value,
+                                groups: groups.value,
+                                templates: userTemplates.value
+                            }
+                            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `biaosub_backup_${new Date().toISOString().slice(0, 10)}.json`
+                            a.click()
+                            URL.revokeObjectURL(url)
+                            showToast('备份导出成功')
+                        } catch (e) { showToast('导出失败: ' + e.message, 'error') }
+                    }
+
+                    const importBackup = async (event) => {
+                        const file = event.target.files[0]
+                        if (!file) return
+                        try {
+                            const text = await file.text()
+                            const backup = JSON.parse(text)
+                            if (!backup.resources && !backup.groups) {
+                                showToast('无效的备份文件', 'error')
+                                return
+                            }
+                            if (!confirm(`确定导入备份吗？\n资源: ${backup.resources?.length || 0}\n聚合组: ${backup.groups?.length || 0}\n模板: ${backup.templates?.length || 0}`)) return
+
+                            // 调用导入 API
+                            const res = await authFetch(API + '/backup/import', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    items: backup.resources,
+                                    groups: backup.groups
+                                })
+                            })
+                            const d = await res.json()
+                            if (d.success) {
+                                // 导入模板
+                                if (backup.templates) {
+                                    for (const tpl of backup.templates) {
+                                        await authFetch(API + '/templates', {
+                                            method: 'POST',
+                                            body: JSON.stringify(tpl)
+                                        })
+                                    }
+                                }
+                                loadData()
+                                loadTemplates()
+                                showToast('备份导入成功')
+                            } else {
+                                showToast('导入失败: ' + d.error, 'error')
+                            }
+                        } catch (e) { showToast('导入失败: ' + e.message, 'error') }
+                        event.target.value = ''
+                    }
+
                     const logout = () => { localStorage.removeItem('biaosub_token'); isLoggedIn.value = false }
 
                     if (localStorage.getItem('biaosub_token')) { isLoggedIn.value = true; loadData() }
@@ -1165,7 +1325,7 @@ dns:
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
                         previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl,
-                        openSettings, getProgressClass, isExpired
+                        settingsModal, openSettings, changePassword, exportBackup, importBackup, getProgressClass, isExpired
                     }
                 } catch (e) {
                     alert("JS Error: " + e.message + "\n\n" + e.stack);
