@@ -276,8 +276,23 @@
                                 </button>
                             </div>
                         </div>
+                        <!-- 已选择的资源（可拖动排序） -->
+                        <div v-if="groupForm.config.length > 0" class="mb-4">
+                            <div class="text-xs text-slate-400 mb-2">已选择 (拖动排序):</div>
+                            <div ref="groupResourceListEl" class="bg-slate-700 rounded p-2 flex flex-wrap gap-2">
+                                <div v-for="conf in groupForm.config" :key="conf.subId" :data-id="conf.subId"
+                                    class="badge badge-accent gap-1 cursor-move drag-handle">
+                                    <i class="fa-solid fa-grip-vertical text-xs opacity-50"></i>
+                                    {{ getResourceName(conf.subId) }}
+                                    <button @click.stop="toggleResourceSelection(conf.subId, false)"
+                                        class="hover:text-red-400">×</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 可选择的资源 -->
+                        <div class="text-xs text-slate-400 mb-2">可选择:</div>
                         <div
-                            class="max-h-96 overflow-y-auto custom-scrollbar bg-slate-900 rounded-lg border border-slate-700 p-2">
+                            class="max-h-72 overflow-y-auto custom-scrollbar bg-slate-900 rounded-lg border border-slate-700 p-2">
                             <div v-for="res in resources" :key="res.id"
                                 class="p-3 border-b border-slate-800 last:border-none hover:bg-slate-800/50">
                                 <div class="flex items-center justify-between">
@@ -580,6 +595,7 @@
                     const clashSelectedList = ref(null)
                     const resourceListEl = ref(null)
                     const previewListEl = ref(null)
+                    const groupResourceListEl = ref(null)
 
                     // --- 默认模板数据 ---
                     const defaultHeader = `mixed-port: 7890
@@ -967,6 +983,27 @@ dns:
                         }
                     })
 
+                    // 聚合组资源选择拖动排序
+                    let groupResourceSortable = null
+                    Vue.watch(() => groupForm.value.config.length, () => {
+                        Vue.nextTick(() => {
+                            if (groupResourceListEl.value && groupForm.value.config.length > 0) {
+                                if (groupResourceSortable) groupResourceSortable.destroy()
+                                groupResourceSortable = new Sortable(groupResourceListEl.value, {
+                                    animation: 150,
+                                    ghostClass: 'sortable-ghost',
+                                    dragClass: 'sortable-drag',
+                                    onEnd: (evt) => {
+                                        const arr = [...groupForm.value.config]
+                                        const [moved] = arr.splice(evt.oldIndex, 1)
+                                        arr.splice(evt.newIndex, 0, moved)
+                                        groupForm.value.config = arr
+                                    }
+                                })
+                            }
+                        })
+                    })
+
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
                         if (!file) return;
@@ -995,7 +1032,7 @@ dns:
                         batchMode, selectedResources, selectAllResources, executeBatchDelete,
                         resourceModal, resourceForm, openResourceModal, editResource, saveResource, deleteResource, refreshResource,
                         groupModal, groupForm, groupNameError, openGroupModal, editGroup, saveGroup, deleteGroup, refreshToken, copyGroupLink, getGroupResourceCount, getResourceName, handleYamlImport,
-                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy,
+                        templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy, groupResourceListEl,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
                         previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl,
