@@ -117,12 +117,15 @@
                                 class="fa-solid fa-plus"></i> 添加资源</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="resource-list">
-                    <div v-for="item in resources" :key="item.id"
+                <div ref="resourceListEl" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div v-for="item in resources" :key="item.id" :data-id="item.id"
                         class="card bg-slate-800/50 border border-slate-700 shadow-xl">
                         <div class="card-body p-5 relative">
                             <div class="flex justify-between items-start">
                                 <div class="flex items-start gap-3">
+                                    <div class="drag-handle cursor-move text-slate-500 hover:text-slate-300 mt-1">
+                                        <i class="fa-solid fa-grip-vertical"></i>
+                                    </div>
                                     <input v-if="batchMode" type="checkbox" :value="item.id" v-model="selectedResources"
                                         class="checkbox checkbox-primary mt-1" />
                                     <div>
@@ -514,17 +517,23 @@
 
             <dialog class="modal" :class="{ 'modal-open': previewModal.show }">
                 <div class="modal-box bg-slate-800 border border-slate-700">
-                    <h3 class="font-bold text-lg text-white mb-4">节点预览</h3>
-                    <div class="max-h-96 overflow-y-auto bg-slate-900 rounded p-2">
-                        <div v-for="node in previewModal.nodes"
-                            class="text-xs text-slate-400 border-b border-slate-700 py-2">
-                            <div class="flex justify-between items-center">
-                                <span class="text-white font-bold truncate pr-2">{{ node.name }}</span>
-                                <button @click="copyText(node.link)"
-                                    class="btn btn-square btn-xs btn-ghost text-accent"><i
-                                        class="fa-regular fa-copy"></i></button>
+                    <h3 class="font-bold text-lg text-white mb-4">节点预览 <span
+                            class="text-xs text-slate-400">(可拖动排序)</span></h3>
+                    <div ref="previewListEl" class="max-h-96 overflow-y-auto bg-slate-900 rounded p-2">
+                        <div v-for="(node, idx) in previewModal.nodes" :key="idx" :data-idx="idx"
+                            class="text-xs text-slate-400 border-b border-slate-700 py-2 flex items-center gap-2">
+                            <div class="drag-handle cursor-move text-slate-500 hover:text-slate-300 flex-shrink-0">
+                                <i class="fa-solid fa-grip-vertical"></i>
                             </div>
-                            <div class="font-mono mt-1 truncate opacity-50 break-all">{{ node.link }}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-white font-bold truncate pr-2">{{ node.name }}</span>
+                                    <button @click="copyText(node.link)"
+                                        class="btn btn-square btn-xs btn-ghost text-accent flex-shrink-0"><i
+                                            class="fa-regular fa-copy"></i></button>
+                                </div>
+                                <div class="font-mono mt-1 truncate opacity-50 break-all">{{ node.link }}</div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-action">
@@ -569,6 +578,8 @@
                     const clashNodeSelector = reactive({ show: false, loading: false, currentGroup: null, allNodeNames: [], tempSelected: [] })
                     const previewModal = reactive({ show: false, nodes: [] })
                     const clashSelectedList = ref(null)
+                    const resourceListEl = ref(null)
+                    const previewListEl = ref(null)
 
                     // --- 默认模板数据 ---
                     const defaultHeader = `mixed-port: 7890
@@ -906,6 +917,56 @@ dns:
                         })
                     })
 
+                    // 资源池拖动排序
+                    let resourceSortable = null
+                    Vue.onMounted(() => {
+                        Vue.nextTick(() => {
+                            if (resourceListEl.value) {
+                                resourceSortable = new Sortable(resourceListEl.value, {
+                                    animation: 150,
+                                    handle: '.drag-handle',
+                                    ghostClass: 'sortable-ghost',
+                                    dragClass: 'sortable-drag',
+                                    onEnd: (evt) => {
+                                        const arr = [...resources.value]
+                                        const [moved] = arr.splice(evt.oldIndex, 1)
+                                        arr.splice(evt.newIndex, 0, moved)
+                                        resources.value = arr
+                                        // 保存排序到后端
+                                        authFetch(API + '/subs/reorder', {
+                                            method: 'POST',
+                                            body: JSON.stringify({ order: arr.map(r => r.id) })
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    })
+
+                    // 节点预览拖动排序
+                    let previewSortable = null
+                    Vue.watch(() => previewModal.show, (show) => {
+                        if (show) {
+                            Vue.nextTick(() => {
+                                if (previewListEl.value) {
+                                    if (previewSortable) previewSortable.destroy()
+                                    previewSortable = new Sortable(previewListEl.value, {
+                                        animation: 150,
+                                        handle: '.drag-handle',
+                                        ghostClass: 'sortable-ghost',
+                                        dragClass: 'sortable-drag',
+                                        onEnd: (evt) => {
+                                            const arr = [...previewModal.nodes]
+                                            const [moved] = arr.splice(evt.oldIndex, 1)
+                                            arr.splice(evt.newIndex, 0, moved)
+                                            previewModal.nodes = arr
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    })
+
                     const handleYamlImport = (event) => {
                         const file = event.target.files[0];
                         if (!file) return;
@@ -937,7 +998,7 @@ dns:
                         templateModal, selectTemplate, toggleResourceSelection, isResourceSelected, selectAllGroupResources, deselectAllGroupResources, getDialerProxy, setDialerProxy,
                         nodeSelector, openNodeSelector, confirmNodeSelection,
                         clashNodeSelector, clashSelectedList, addClashGroup, openClashNodeSelector, clashSelectAll, removeFromClashSelected, confirmClashNodeSelection,
-                        previewModal, previewNodes, copyText, copyAllPreviewNodes,
+                        previewModal, previewListEl, previewNodes, copyText, copyAllPreviewNodes, resourceListEl,
                         openSettings, getProgressClass, isExpired
                     }
                 } catch (e) {
