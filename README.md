@@ -85,12 +85,12 @@ CREATE TABLE IF NOT EXISTS templates (
 如果你是从旧版本升级，请依次执行以下迁移命令：
 
 ```sql
--- 为资源表添加更新时间列
+
 ALTER TABLE subscriptions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
 
--- 为聚合组表添加 Clash 配置列和更新时间列
 ALTER TABLE groups ADD COLUMN clash_config TEXT;
 ALTER TABLE groups ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+
 ```
 
 > ⚠️ **注意**：如果执行 `ALTER TABLE` 报错提示列已存在，可以忽略。执行完成后重新保存聚合组即可生效。

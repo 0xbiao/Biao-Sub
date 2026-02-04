@@ -8,7 +8,8 @@ import {
     groupListEl,
     previewListEl,
     groupResourceListEl,
-    clashSelectedList
+    clashSelectedList,
+    clashNodeSelector
 } from '../store.js'
 import { reorderResources, reorderGroups } from '../api.js'
 import { showToast } from '../utils.js'
@@ -130,12 +131,30 @@ export const initGroupResourceSortable = () => {
 // Clash 节点排序初始化
 export const initClashSortable = () => {
     if (!clashSelectedList.value) return
-    if (clashSortable) clashSortable.destroy()
+    if (clashSortable) {
+        clashSortable.destroy()
+        clashSortable = null
+    }
 
     clashSortable = new Sortable(clashSelectedList.value, {
         animation: 150,
+        handle: '.drag-handle',
         ghostClass: 'sortable-ghost',
-        dragClass: 'sortable-drag'
+        dragClass: 'sortable-drag',
+        onStart: () => {
+            clashSortable._snapshot = [...clashNodeSelector.tempSelected]
+        },
+        onEnd: (evt) => {
+            const arr = clashSortable._snapshot || [...clashNodeSelector.tempSelected]
+            const [moved] = arr.splice(evt.oldIndex, 1)
+            arr.splice(evt.newIndex, 0, moved)
+
+            // 更新数据以映射回 Vue 状态
+            clashNodeSelector.tempSelected = arr
+
+            // 重新重置 snapshot
+            clashSortable._snapshot = [...arr]
+        }
     })
 }
 
@@ -166,5 +185,17 @@ export const setupSortableWatchers = () => {
     // 聚合组资源数量变化时重新初始化
     Vue.watch(() => groupForm.value.config.length, () => {
         Vue.nextTick(initGroupResourceSortable)
+    })
+
+    // Clash 节点选择器显示时初始化排序
+    Vue.watch(() => clashNodeSelector.show, (show) => {
+        if (show) {
+            Vue.nextTick(() => setTimeout(initClashSortable, 200))
+        } else {
+            if (clashSortable) {
+                clashSortable.destroy()
+                clashSortable = null
+            }
+        }
     })
 }
