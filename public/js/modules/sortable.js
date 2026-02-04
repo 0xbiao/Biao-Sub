@@ -128,15 +128,18 @@ export const initGroupResourceSortable = () => {
     })
 }
 
-// Clash 节点排序初始化
+// Clash 节点排序初始化 - 增强数据与 DOM 同步
 export const initClashSortable = () => {
-    if (!clashSelectedList.value) return
+    // 确保 DOM 元素存在
+    const el = clashSelectedList.value
+    if (!el) return
+
     if (clashSortable) {
         clashSortable.destroy()
         clashSortable = null
     }
 
-    clashSortable = new Sortable(clashSelectedList.value, {
+    clashSortable = new Sortable(el, {
         animation: 150,
         handle: '.drag-handle',
         ghostClass: 'sortable-ghost',
@@ -145,14 +148,31 @@ export const initClashSortable = () => {
             clashSortable._snapshot = [...clashNodeSelector.tempSelected]
         },
         onEnd: (evt) => {
-            const arr = clashSortable._snapshot || [...clashNodeSelector.tempSelected]
+            if (evt.oldIndex === evt.newIndex) return
+
+            // 1. 获取最新快照
+            const snapshot = clashSortable._snapshot || [...clashNodeSelector.tempSelected]
+
+            // 2. 取消 Sortable 的 DOM 变动（关键：让 Vue 重新按照数据渲染 DOM）
+            const parent = evt.from
+            const itemEl = evt.item
+            const children = Array.from(parent.children)
+            // 将拖动的元素移回原位
+            if (evt.oldIndex < children.length) {
+                parent.insertBefore(itemEl, parent.children[evt.oldIndex])
+            } else {
+                parent.appendChild(itemEl)
+            }
+
+            // 3. 更新 Vue 响应式数据
+            const arr = [...snapshot]
             const [moved] = arr.splice(evt.oldIndex, 1)
             arr.splice(evt.newIndex, 0, moved)
 
-            // 更新数据以映射回 Vue 状态
+            // 触发 Vue 更新
             clashNodeSelector.tempSelected = arr
 
-            // 重新重置 snapshot
+            // 4. 更新快照以备下次拖拽
             clashSortable._snapshot = [...arr]
         }
     })
@@ -170,32 +190,32 @@ export const setupSortableWatchers = () => {
         Vue.nextTick(() => setTimeout(initGroupSortable, 100))
     })
 
-    // 排序模式变化时初始化预览排序
+    // 预览模式变化时处理
     Vue.watch(() => previewModal.sortMode, (sortMode) => {
         if (sortMode) {
             Vue.nextTick(() => setTimeout(initPreviewSortable, 100))
-        } else {
-            if (previewSortable) {
-                previewSortable.destroy()
-                previewSortable = null
-            }
+        } else if (previewSortable) {
+            previewSortable.destroy()
+            previewSortable = null
         }
     })
 
-    // 聚合组资源数量变化时重新初始化
+    // 聚合组资源变化时
     Vue.watch(() => groupForm.value.config.length, () => {
         Vue.nextTick(initGroupResourceSortable)
     })
 
-    // Clash 节点选择器显示时初始化排序
-    Vue.watch(() => clashNodeSelector.show, (show) => {
-        if (show) {
-            Vue.nextTick(() => setTimeout(initClashSortable, 200))
-        } else {
-            if (clashSortable) {
+    // Clash 节点选择器：同时监听“显示状态”和“已选数量”
+    // 因为已选列表有 v-if，数量从 0 变 1 时 DOM 才会出现
+    Vue.watch(
+        [() => clashNodeSelector.show, () => clashNodeSelector.tempSelected.length],
+        ([show, len]) => {
+            if (show && len > 0) {
+                Vue.nextTick(() => setTimeout(initClashSortable, 200))
+            } else if (!show && clashSortable) {
                 clashSortable.destroy()
                 clashSortable = null
             }
         }
-    })
+    )
 }
