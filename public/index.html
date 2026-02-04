@@ -569,10 +569,23 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- 可选择的资源组 -->
+                        <div v-if="clashNodeSelector.allResourceNames.length > 0" class="mb-4">
+                            <div class="text-xs text-slate-400 mb-2">可选资源组 (引用整组节点):</div>
+                            <div class="flex flex-wrap gap-2 bg-slate-900 rounded p-3 border border-slate-700">
+                                <label v-for="resName in clashNodeSelector.allResourceNames" :key="'res-'+resName"
+                                    class="flex items-center gap-2 p-1 px-2 hover:bg-slate-700 cursor-pointer rounded-full border border-slate-600 transition-colors">
+                                    <input type="checkbox" :value="resName" v-model="clashNodeSelector.tempSelected"
+                                        class="checkbox checkbox-xs checkbox-accent" />
+                                    <span class="text-xs text-slate-200 font-medium">{{ resName }}</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- 可选择的节点 -->
-                        <div class="text-xs text-slate-400 mb-2">可选择:</div>
+                        <div class="text-xs text-slate-400 mb-2">可选单节点:</div>
                         <div
-                            class="max-h-64 overflow-y-auto custom-scrollbar bg-slate-900 rounded p-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            class="max-h-64 overflow-y-auto custom-scrollbar bg-slate-900 rounded p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border border-slate-700">
                             <label v-for="nodeName in clashNodeSelector.allNodeNames" :key="nodeName"
                                 class="flex items-center gap-2 p-2 hover:bg-slate-800 cursor-pointer border border-slate-700 rounded">
                                 <input type="checkbox" :value="nodeName" v-model="clashNodeSelector.tempSelected"

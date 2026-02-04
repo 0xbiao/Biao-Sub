@@ -216,15 +216,21 @@ export const addClashGroup = () => {
 
 export const openClashNodeSelector = async (group) => {
     clashNodeSelector.currentGroup = group
+    clashNodeSelector.allResourceNames = []
     clashNodeSelector.allNodeNames = []
     clashNodeSelector.tempSelected = [...(group.proxies || [])]
     clashNodeSelector.loading = true
     clashNodeSelector.show = true
 
     const selectedConfigs = groupForm.value.config
+    const resourceNames = []
     const promises = selectedConfigs.map(async (conf) => {
         const res = resources.value.find(r => r.id === conf.subId)
         if (!res) return []
+
+        // 收集资源名称
+        if (res.name) resourceNames.push(res.name)
+
         try {
             const d = await checkResource(res.url, res.type)
             if (d.success && d.data.nodes) {
@@ -240,6 +246,7 @@ export const openClashNodeSelector = async (group) => {
 
     const results = await Promise.all(promises)
     const allNames = results.flat()
+    clashNodeSelector.allResourceNames = [...new Set(resourceNames)]
     clashNodeSelector.allNodeNames = [...new Set(allNames)]
     clashNodeSelector.loading = false
 }
