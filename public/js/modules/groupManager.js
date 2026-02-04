@@ -217,10 +217,17 @@ export const addClashGroup = () => {
 export const openClashNodeSelector = async (group) => {
     clashNodeSelector.currentGroup = group
     clashNodeSelector.allResourceNames = []
+    clashNodeSelector.allGroupNames = []
     clashNodeSelector.allNodeNames = []
     clashNodeSelector.tempSelected = [...(group.proxies || [])]
     clashNodeSelector.loading = true
     clashNodeSelector.show = true
+
+    // 收集所有已定义的策略组名称（排除当前组，防止循环引用）
+    const otherGroups = groupForm.value.clash_config.groups
+        .filter(g => g !== group && g.name)
+        .map(g => g.name)
+    clashNodeSelector.allGroupNames = [...new Set(otherGroups)]
 
     const selectedConfigs = groupForm.value.config
     const resourceNames = []

@@ -569,6 +569,19 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- 可选择的策略组 (嵌套引用) -->
+                        <div v-if="clashNodeSelector.allGroupNames.length > 0" class="mb-4">
+                            <div class="text-xs text-slate-400 mb-2">可选策略组 (嵌套引用):</div>
+                            <div class="flex flex-wrap gap-2 bg-slate-900 rounded p-3 border border-slate-700">
+                                <label v-for="gName in clashNodeSelector.allGroupNames" :key="'grp-'+gName"
+                                    class="flex items-center gap-2 p-1 px-2 hover:bg-slate-700 cursor-pointer rounded-full border border-slate-600 transition-colors">
+                                    <input type="checkbox" :value="gName" v-model="clashNodeSelector.tempSelected"
+                                        class="checkbox checkbox-xs checkbox-warning" />
+                                    <span class="text-xs text-slate-200 font-medium">{{ gName }}</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- 可选择的资源组 -->
                         <div v-if="clashNodeSelector.allResourceNames.length > 0" class="mb-4">
                             <div class="text-xs text-slate-400 mb-2">可选资源组 (引用整组节点):</div>
