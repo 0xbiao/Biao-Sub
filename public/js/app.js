@@ -1,5 +1,4 @@
 // BiaoSUB 应用入口
-// 导入状态
 import {
     resources, groups, isLoggedIn, loginPassword, loginLoading, currentTab, submitting,
     toast, batchMode, selectedResources, resourceModal, groupModal, templateModal,
@@ -42,18 +41,19 @@ import {
 import {
     openSettings, exportBackup, importBackup
 } from './modules/settings.js'
+import { initTheme, toggleTheme } from './modules/theme.js'
 
 // 创建 Vue 应用
 const { createApp, onMounted, nextTick } = Vue
 
-const app = createApp({
+createApp({
     setup() {
         // 初始化
         onMounted(() => {
-            document.documentElement.setAttribute('data-theme', theme.value)
+            initTheme() // 使用独立模块初始化主题
             checkAuth()
-            loadResources()
-            loadGroups()
+            loadData('resource')
+            loadData('group')
             loadUserTemplates()
             nextTick(() => {
                 initResourceSortable()
@@ -78,11 +78,7 @@ const app = createApp({
 
             // 工具函数
             showToast, copyText, getProgressClass, isExpired,
-            toggleTheme: () => {
-                theme.value = theme.value === 'dark' ? 'light' : 'dark'
-                localStorage.setItem('theme', theme.value)
-                document.documentElement.setAttribute('data-theme', theme.value)
-            },
+            toggleTheme, // 使用独立模块的主题切换
 
             // 认证
             handleLogin, logout,
