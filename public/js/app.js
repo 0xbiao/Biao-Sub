@@ -9,7 +9,8 @@ import {
     templateModal, userTemplates,
     previewModal, settingsModal,
     nodeSelector, clashNodeSelector,
-    clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl
+    clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl,
+    stats
 } from './store.js'
 
 // 导入工具函数
@@ -73,7 +74,7 @@ const app = createApp({
             groupModal, groupForm, groupNameError,
             templateModal, userTemplates,
             previewModal, settingsModal,
-            nodeSelector, clashNodeSelector,
+            nodeSelector, clashNodeSelector, stats,
             clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl,
 
             // 工具函数
