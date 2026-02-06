@@ -99,7 +99,10 @@ export const updateLinkName = (link, newName) => {
 }
 
 // 从链接中提取节点名称
-export const getNameFromLink = (link) => {
+export const getNameFromLink = (url) => {
+    if (!url) return ''
+    // 仅提取第一行，防止批量导入时名称污染
+    const link = url.trim().split('\n')[0].trim()
     if (!link) return ''
 
     try {
