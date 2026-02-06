@@ -1,6 +1,5 @@
 // BiaoSUB 配置常量
 export const API = '/api'
-export const VERSION = '1.0.0'
 
 // 默认 Clash 配置头
 export const defaultHeader = `mixed-port: 7890
