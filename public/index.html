@@ -804,21 +804,21 @@
                         class="btn btn-sm btn-ghost gap-1 w-full">
                         <i class="fa-brands fa-github text-lg"></i> GitHub 项目主页
                     </a>
-                </div>
 
-                <div class="modal-action">
-                    <button class="btn btn-ghost" @click="settingsModal.show=false">关闭</button>
+                    <div class="modal-action">
+                        <button class="btn btn-ghost" @click="settingsModal.show=false">关闭</button>
+                    </div>
                 </div>
-        </div>
-        </dialog>
+            </dialog>
 
-        <div v-if="toast.show" class="toast toast-bottom toast-end z-50">
-            <div class="alert shadow-lg text-white" :class="toast.type === 'success' ? 'alert-success' : 'alert-error'">
-                <span>{{ toast.message
-                    }}</span>
+            <div v-if="toast.show" class="toast toast-bottom toast-end z-50">
+                <div class="alert shadow-lg text-white"
+                    :class="toast.type === 'success' ? 'alert-success' : 'alert-error'">
+                    <span>{{ toast.message
+                        }}</span>
+                </div>
             </div>
         </div>
-    </div>
     </div>
 
 
