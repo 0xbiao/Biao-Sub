@@ -365,7 +365,7 @@
                                                 :checked="isResourceSelected(res.id)"
                                                 @change="toggleResourceSelection(res.id, $event.target.checked)" />
                                             <div>
-                                                <div class="text-white font-medium">{{ res.name }}</div>
+                                                <div class="text-adaptive-base font-medium">{{ res.name }}</div>
                                                 <div class="text-xs text-adaptive-muted mt-1">包含节点: {{ res.info ?
                                                     (res.info.nodeCount
                                                     || 0) : 0 }}
