@@ -22,9 +22,13 @@ export const openResourceModal = () => {
 // 监听 URL 输入变化（用于单节点名称同步）
 export const handleUrlInput = () => {
     if (resourceForm.value.type === 'node' && resourceForm.value.url) {
-        // 如果输入包含换行符（多行粘贴模式），则清空名称
-        // 这样后端在批量拆分时会使用节点各自的原始名称，而不是统一的前缀名
-        if (resourceForm.value.url.trim().includes('\n')) {
+        const val = resourceForm.value.url.trim()
+        // 1. 如果输入包含换行符（多行粘贴模式）
+        // 2. 或者检测到包含多个协议头（单行粘贴了多个链接）
+        // 则强制清空名称，让后端自动提取各节点名称
+        const hasMultiple = val.includes('\n') || (val.match(/:\/\//g) || []).length > 1
+
+        if (hasMultiple) {
             resourceForm.value.name = ''
             return
         }
