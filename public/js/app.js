@@ -11,7 +11,7 @@ import {
 import { showToast, copyText, getProgressClass, isExpired } from './utils.js'
 
 // 导入API
-import { loadData, loadTemplates } from './api.js'
+import { loadResources, loadGroups, loadTemplates } from './api.js'
 
 // 导入功能模块
 import { handleLogin, logout, checkAuth } from './modules/auth.js'
@@ -52,15 +52,14 @@ createApp({
         onMounted(() => {
             initTheme() // 使用独立模块初始化主题
             checkAuth()
-            loadData('resource')
-            loadData('group')
-            loadUserTemplates()
+            loadResources()
+            loadGroups()
+            loadTemplates()
             nextTick(() => {
                 initResourceSortable()
                 initGroupSortable()
             })
             setupSortableWatchers()
-            loadTemplates()
         })
 
         // 返回所有模板需要的变量和函数

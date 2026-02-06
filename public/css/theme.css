@@ -22,10 +22,28 @@
     --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
+/* 基础 Body 样式 */
+body {
+    background-color: var(--bg-main);
+    background-image: var(--bg-gradient);
+    min-height: 100vh;
+    color: var(--text-base);
+    transition: all 0.3s ease;
+}
+
 /* 全局自适应变量类 */
-.text-adaptive-white, .text-adaptive-base { color: var(--text-base); }
-.text-adaptive-muted { color: var(--text-muted); }
-.bg-adaptive-input { background-color: var(--input-bg); }
+.text-adaptive-white,
+.text-adaptive-base {
+    color: var(--text-base);
+}
+
+.text-adaptive-muted {
+    color: var(--text-muted);
+}
+
+.bg-adaptive-input {
+    background-color: var(--input-bg);
+}
 
 /* 玻璃态面板核心类 */
 .glass-panel {
@@ -38,26 +56,46 @@
 }
 
 /* 覆盖 DaisyUI 默认样式以适配变量 */
-.input, .textarea, .select, .tabs-boxed, .collapse, .card, .modal-box {
+.input,
+.textarea,
+.select,
+.tabs-boxed,
+.collapse,
+.card,
+.modal-box {
     background-color: var(--panel-bg) !important;
     border-color: var(--panel-border) !important;
     color: var(--text-base) !important;
 }
 
-.tab-active { color: white !important; }
+.tab-active {
+    color: white !important;
+}
 
 /* 滚动条自适应 */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background: var(--text-muted);
     border-radius: 3px;
     opacity: 0.5;
 }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
 
 /* 拖拽手柄样式 */
-.drag-handle { cursor: grab; }
-.drag-handle:active { cursor: grabbing; }
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
 
 /* 代码编辑器样式 */
 textarea.code-editor {
@@ -68,5 +106,11 @@ textarea.code-editor {
     font-size: 12px;
 }
 
-.sortable-ghost { opacity: 0.4; background: var(--primary) !important; }
-.sortable-drag { background: var(--input-bg) !important; }
+.sortable-ghost {
+    opacity: 0.4;
+    background: #6366f1 !important;
+}
+
+.sortable-drag {
+    background: var(--input-bg) !important;
+}

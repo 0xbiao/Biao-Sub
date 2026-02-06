@@ -1,5 +1,5 @@
 /* BiaoSUB 主题切换逻辑 */
-import { theme } from './store.js'
+import { theme } from '../store.js'
 
 export const initTheme = () => {
     const savedTheme = localStorage.getItem('theme') || 'dark'
