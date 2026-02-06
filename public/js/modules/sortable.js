@@ -128,9 +128,8 @@ export const initGroupResourceSortable = () => {
     })
 }
 
-// Clash 节点排序初始化 - 简化版 (Vue Compatible)
+// Clash 节点排序初始化 - 增强版 (Vue Compatible)
 export const initClashSortable = () => {
-    // 确保 DOM 元素存在
     const el = clashSelectedList.value
     if (!el) return
 
@@ -150,16 +149,33 @@ export const initClashSortable = () => {
         onEnd: (evt) => {
             if (evt.oldIndex === evt.newIndex) return
 
-            // 获取最新快照或当前数据
-            const arr = clashSortable._snapshot || [...clashNodeSelector.tempSelected]
+            // 1. 获取最新快照
+            const snapshot = clashSortable._snapshot || [...clashNodeSelector.tempSelected]
+
+            // 2. 核心修复：手动将 DOM 移回原位，让 Vue 来接管渲染
+            const parent = evt.from
+            const itemEl = evt.item
+            const children = Array.from(parent.children)
+
+            // 移除被移动的元素
+            itemEl.remove()
+
+            // 重新插入到旧位置（这样 DOM 状态就回到了拖拽开始前的样子，完全交给 Vue 控制）
+            if (evt.oldIndex < children.length) {
+                parent.insertBefore(itemEl, parent.children[evt.oldIndex])
+            } else {
+                parent.appendChild(itemEl)
+            }
+
+            // 3. 更新 Vue 响应式数据
+            const arr = [...snapshot]
             const [moved] = arr.splice(evt.oldIndex, 1)
             arr.splice(evt.newIndex, 0, moved)
 
-            // 直接更新 Vue 数据，Sortable 会自动处理 DOM 移动（默认行为），Vue DOM Diff 会在下次 tick 校正
-            // 如果出现抖动，可以尝试还原 DOM 但通常在 Vue3 中直接更新数据即可
+            // 触发更新
             clashNodeSelector.tempSelected = arr
 
-            // 更新快照
+            // 4. 更新快照以备下次拖拽
             clashSortable._snapshot = [...arr]
         }
     })
