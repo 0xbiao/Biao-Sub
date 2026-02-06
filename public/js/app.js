@@ -1,16 +1,11 @@
 // BiaoSUB 应用入口
 // 导入状态
 import {
-    isLoggedIn, loginPassword, loginLoading,
-    currentTab, resources, groups, submitting, toast,
-    batchMode, selectedResources,
-    resourceModal, resourceForm,
-    groupModal, groupForm, groupNameError,
-    templateModal, userTemplates,
-    previewModal, settingsModal,
-    nodeSelector, clashNodeSelector,
-    clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl,
-    stats
+    resources, groups, isLoggedIn, loginPassword, loginLoading, currentTab, submitting,
+    toast, batchMode, selectedResources, resourceModal, groupModal, templateModal,
+    previewModal, settingsModal, resourceForm, groupForm, groupNameError, nodeSelector,
+    clashNodeSelector, clashSelectedList, resourceListEl, previewListEl,
+    groupResourceListEl, groupListEl, userTemplates, stats, theme
 } from './store.js'
 
 // 导入工具函数
@@ -55,7 +50,11 @@ const app = createApp({
     setup() {
         // 初始化
         onMounted(() => {
+            document.documentElement.setAttribute('data-theme', theme.value)
             checkAuth()
+            loadResources()
+            loadGroups()
+            loadUserTemplates()
             nextTick(() => {
                 initResourceSortable()
                 initGroupSortable()
@@ -74,11 +73,16 @@ const app = createApp({
             groupModal, groupForm, groupNameError,
             templateModal, userTemplates,
             previewModal, settingsModal,
-            nodeSelector, clashNodeSelector, stats,
+            nodeSelector, clashNodeSelector, stats, theme,
             clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl,
 
             // 工具函数
             showToast, copyText, getProgressClass, isExpired,
+            toggleTheme: () => {
+                theme.value = theme.value === 'dark' ? 'light' : 'dark'
+                localStorage.setItem('theme', theme.value)
+                document.documentElement.setAttribute('data-theme', theme.value)
+            },
 
             // 认证
             handleLogin, logout,
