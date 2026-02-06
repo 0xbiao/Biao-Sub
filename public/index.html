@@ -233,12 +233,13 @@
                                 @click="resourceForm.type='node'">单独节点</a>
                         </div>
                         <div v-if="resourceForm.type==='group'">
-                            <textarea v-model="resourceForm.url" placeholder="请粘贴节点链接，每行一个。保存后将作为一个整体管理。"
+                            <textarea v-model="resourceForm.url" @input="handleUrlInput"
+                                placeholder="请粘贴节点链接，每行一个。保存后将作为一个整体管理。"
                                 class="textarea textarea-bordered h-32 w-full bg-slate-900"></textarea>
                         </div>
                         <div v-else>
-                            <input type="text" v-model="resourceForm.url" placeholder="支持批量粘贴，会自动拆分为多个独立节点"
-                                class="input input-bordered w-full bg-slate-900" />
+                            <input type="text" v-model="resourceForm.url" @input="handleUrlInput"
+                                placeholder="支持批量粘贴，会自动拆分为多个独立节点" class="input input-bordered w-full bg-slate-900" />
                         </div>
                     </div>
                     <div class="modal-action">

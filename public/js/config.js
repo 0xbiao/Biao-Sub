@@ -76,16 +76,6 @@ dns:
 // 默认规则
 export const defaultRules = `rules:
   - GEOIP,lan,DIRECT,no-resolve
-  - PROCESS-NAME,XTerminal.exe,DIRECT
-  - PROCESS-NAME,Thunder.exe,DIRECT
-  - PROCESS-NAME,DownloadSdkServer.exe,DIRECT
-  
-  # === 自定义直连  ===
-  - DOMAIN-SUFFIX,getgrass.io,DIRECT
-  - DOMAIN-SUFFIX,grass.io,DIRECT
-  - DOMAIN-SUFFIX,tianzecdn.com,DIRECT
-  - DOMAIN-SUFFIX,tianzebbs.com,DIRECT
-  - DOMAIN-KEYWORD,tianze,DIRECT
   
   # === GEOSITE 规则  ===
   - GEOSITE,github,Proxy

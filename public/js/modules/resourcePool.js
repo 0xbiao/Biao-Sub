@@ -19,6 +19,16 @@ export const openResourceModal = () => {
     resourceModal.show = true
 }
 
+// 监听 URL 输入变化（用于单节点名称同步）
+export const handleUrlInput = () => {
+    if (resourceForm.value.type === 'node' && resourceForm.value.url) {
+        const name = getNameFromLink(resourceForm.value.url)
+        if (name) {
+            resourceForm.value.name = name
+        }
+    }
+}
+
 // 编辑资源
 export const editResource = (item) => {
     resourceForm.value = { ...item }

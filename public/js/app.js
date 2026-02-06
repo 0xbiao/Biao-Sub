@@ -22,7 +22,7 @@ import { loadData, loadTemplates } from './api.js'
 import { handleLogin, logout, checkAuth } from './modules/auth.js'
 import {
     openResourceModal, editResource, saveResource, deleteResource, refreshResource,
-    selectAllResources, executeBatchDelete, previewNodes
+    selectAllResources, executeBatchDelete, previewNodes, handleUrlInput
 } from './modules/resourcePool.js'
 import {
     openGroupModal, selectTemplate, editGroup, saveGroup, deleteGroup,
@@ -84,7 +84,7 @@ const app = createApp({
 
             // 资源池
             openResourceModal, editResource, saveResource, deleteResource, refreshResource,
-            selectAllResources, executeBatchDelete, previewNodes,
+            selectAllResources, executeBatchDelete, previewNodes, handleUrlInput,
 
             // 聚合组
             openGroupModal, selectTemplate, editGroup, saveGroup, deleteGroup,
