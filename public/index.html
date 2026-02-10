@@ -863,25 +863,59 @@
 
             <!-- 远程订阅弹窗 -->
             <dialog class="modal" :class="{ 'modal-open': remoteModal.show }">
-                <div class="modal-box glass-panel">
+                <div class="modal-box glass-panel max-w-lg">
                     <h3 class="font-bold text-lg text-adaptive-white mb-4">
                         <i class="fa-solid fa-cloud-arrow-down text-accent mr-2"></i>导入远程订阅
                     </h3>
+                    <!-- 模式切换 -->
+                    <div class="tabs tabs-boxed mb-4 bg-adaptive-input">
+                        <a class="tab" :class="{'tab-active': remoteModal.mode === 'auto'}"
+                            @click="remoteModal.mode='auto'">
+                            <i class="fa-solid fa-bolt mr-1"></i>自动获取
+                        </a>
+                        <a class="tab" :class="{'tab-active': remoteModal.mode === 'manual'}"
+                            @click="remoteModal.mode='manual'">
+                            <i class="fa-solid fa-paste mr-1"></i>手动粘贴
+                        </a>
+                    </div>
+
                     <div class="flex flex-col gap-4">
-                        <input type="text" v-model="remoteModal.name" placeholder="订阅名称 (可选，留空自动获取)"
+                        <input type="text" v-model="remoteModal.name" placeholder="订阅名称 (可选)"
                             class="input input-bordered w-full" :disabled="remoteModal.loading" />
-                        <input type="text" v-model="remoteModal.url" placeholder="远程订阅链接 (必填)"
-                            class="input input-bordered w-full" :disabled="remoteModal.loading" />
+
+                        <!-- 自动获取模式 -->
+                        <template v-if="remoteModal.mode === 'auto'">
+                            <input type="text" v-model="remoteModal.url" placeholder="远程订阅链接 (必填)"
+                                class="input input-bordered w-full" :disabled="remoteModal.loading" />
+                            <div class="text-xs text-adaptive-muted opacity-70">
+                                <i class="fa-solid fa-circle-info mr-1"></i>
+                                如果机场屏蔽了 CF 请切换到"手动粘贴"模式
+                            </div>
+                        </template>
+
+                        <!-- 手动粘贴模式 -->
+                        <template v-else>
+                            <input type="text" v-model="remoteModal.url" placeholder="订阅源 URL (可选，方便记录来源)"
+                                class="input input-bordered input-sm w-full" :disabled="remoteModal.loading" />
+                            <textarea v-model="remoteModal.content" placeholder="粘贴订阅内容（支持 Base64 编码和节点链接）"
+                                class="textarea textarea-bordered w-full h-32 font-mono text-xs"
+                                :disabled="remoteModal.loading"></textarea>
+                            <div class="text-xs text-adaptive-muted opacity-70">
+                                <i class="fa-solid fa-circle-info mr-1"></i>
+                                在浏览器中打开订阅链接，复制全部内容粘贴到上方
+                            </div>
+                        </template>
+
                         <div v-if="remoteModal.loading" class="text-sm text-info flex items-center gap-2">
                             <span class="loading loading-spinner loading-sm"></span>
-                            正在获取远程订阅，请稍候...
+                            {{ remoteModal.mode === 'auto' ? '正在获取远程订阅...' : '正在解析...' }}
                         </div>
                     </div>
                     <div class="modal-action">
                         <button class="btn btn-ghost" @click="remoteModal.show=false"
                             :disabled="remoteModal.loading">取消</button>
                         <button class="btn btn-accent text-white" @click="saveRemoteSubscription()"
-                            :disabled="remoteModal.loading || !remoteModal.url">
+                            :disabled="remoteModal.loading || (remoteModal.mode === 'auto' ? !remoteModal.url : !remoteModal.content)">
                             <i class="fa-solid fa-download mr-1"></i>导入
                         </button>
                     </div>

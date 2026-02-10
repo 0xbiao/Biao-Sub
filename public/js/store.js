@@ -91,8 +91,10 @@ export const clashNodeSelector = reactive({
 export const remoteModal = reactive({
     show: false,
     loading: false,
+    mode: 'auto',  // 'auto' 自动获取 / 'manual' 手动粘贴
     url: '',
-    name: ''
+    name: '',
+    content: ''    // 手动粘贴的内容
 })
 
 // ============ DOM 引用 ============
