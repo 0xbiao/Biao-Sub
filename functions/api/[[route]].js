@@ -163,30 +163,42 @@ app.put('/subs/:id', async (c) => {
 
     return c.json({ success: true })
 })
-// 辅助函数：刷新包含指定资源ID的聚合组缓存
+// 辅助函数：刷新包含指定资源ID的聚合组缓存，并清理已删除资源的引用
 const refreshGroupCacheByResourceIds = async (db, resourceIds) => {
     try {
         const idSet = new Set(resourceIds.map(id => String(id)));
         const allGroups = await db.prepare("SELECT id, token, config, clash_config FROM groups WHERE status = 1").all();
         const batchUpdates = [];
-        
+
         for (const g of allGroups.results) {
             const config = JSON.parse(g.config || '[]');
             const clashConfig = g.clash_config ? JSON.parse(g.clash_config) : {};
             const resources = clashConfig.resources || [];
-            
+
             // 检查是否包含被删除的资源
-            const isAffected = config.some(c => idSet.has(String(c.subId))) || 
-                               resources.some(r => idSet.has(String(r.subId)));
-            
+            const isAffected = config.some(c => idSet.has(String(c.subId))) ||
+                resources.some(r => idSet.has(String(r.subId)));
+
             if (isAffected) {
-                const newYaml = await assembleGroupConfig(db, g.token, parseNodesCommon);
-                if (newYaml) {
-                    batchUpdates.push(db.prepare("UPDATE groups SET cached_yaml = ? WHERE id = ?").bind(newYaml, g.id));
+                // 从 config 中移除已删除资源的引用
+                const newConfig = config.filter(c => !idSet.has(String(c.subId)));
+
+                // 从 clash_config.resources 中也移除
+                if (clashConfig.resources) {
+                    clashConfig.resources = resources.filter(r => !idSet.has(String(r.subId)));
                 }
+
+                // 重新生成 YAML 缓存
+                const newYaml = await assembleGroupConfig(db, g.token, parseNodesCommon);
+
+                // 同时更新 config、clash_config 和 cached_yaml
+                batchUpdates.push(
+                    db.prepare("UPDATE groups SET config = ?, clash_config = ?, cached_yaml = ? WHERE id = ?")
+                        .bind(JSON.stringify(newConfig), JSON.stringify(clashConfig), newYaml || '', g.id)
+                );
             }
         }
-        
+
         // 分批执行更新（每批最多50条）
         const BATCH_SIZE = 50;
         for (let i = 0; i < batchUpdates.length; i += BATCH_SIZE) {
@@ -201,29 +213,29 @@ const refreshGroupCacheByResourceIds = async (db, resourceIds) => {
 app.delete('/subs/:id', async (c) => {
     const id = c.req.param('id');
     await c.env.DB.prepare("DELETE FROM subscriptions WHERE id=?").bind(id).run();
-    
+
     // 刷新包含该资源的聚合组缓存
     await refreshGroupCacheByResourceIds(c.env.DB, [id]);
-    
+
     return c.json({ success: true });
 })
 
 app.post('/subs/delete', async (c) => {
     const { ids } = await c.req.json();
     if (!ids || !Array.isArray(ids) || ids.length === 0) return c.json({ success: true });
-    
+
     // 分批删除（每批最多50条，避免超过D1限制）
     const BATCH_SIZE = 50;
     const stmt = c.env.DB.prepare("DELETE FROM subscriptions WHERE id = ?");
-    
+
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
         const chunk = ids.slice(i, i + BATCH_SIZE);
         await c.env.DB.batch(chunk.map(id => stmt.bind(id)));
     }
-    
+
     // 刷新包含这些资源的聚合组缓存
     await refreshGroupCacheByResourceIds(c.env.DB, ids);
-    
+
     return c.json({ success: true });
 })
 app.post('/sort', async (c) => { const { ids } = await c.req.json(); const s = c.env.DB.prepare("UPDATE subscriptions SET sort_order=? WHERE id=?"); await c.env.DB.batch(ids.map((id, i) => s.bind(i, id))); return c.json({ success: true }) })
