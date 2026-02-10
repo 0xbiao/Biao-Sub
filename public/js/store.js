@@ -87,6 +87,14 @@ export const clashNodeSelector = reactive({
     tempSelected: []
 })
 
+// ============ 远程订阅 ============
+export const remoteModal = reactive({
+    show: false,
+    loading: false,
+    url: '',
+    name: ''
+})
+
 // ============ DOM 引用 ============
 export const clashSelectedList = ref(null)
 export const resourceListEl = ref(null)

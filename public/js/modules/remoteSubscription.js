@@ -1,0 +1,71 @@
+// BiaoSUB 远程订阅管理模块
+import { API } from '../config.js'
+import { remoteModal } from '../store.js'
+import { authFetch, loadResources } from '../api.js'
+import { showToast } from '../utils.js'
+
+// 打开远程订阅弹窗
+export const openRemoteModal = () => {
+    remoteModal.url = ''
+    remoteModal.name = ''
+    remoteModal.loading = false
+    remoteModal.show = true
+}
+
+// 保存远程订阅
+export const saveRemoteSubscription = async () => {
+    if (!remoteModal.url || !remoteModal.url.trim()) {
+        showToast('请输入订阅链接', 'error')
+        return
+    }
+
+    remoteModal.loading = true
+    try {
+        const res = await authFetch(API + '/remote', {
+            method: 'POST',
+            body: JSON.stringify({
+                url: remoteModal.url.trim(),
+                name: remoteModal.name.trim()
+            })
+        })
+
+        if (!res) return
+
+        const data = await res.json()
+        if (data.success) {
+            showToast(`导入成功！解析到 ${data.data.nodeCount} 个节点`, 'success')
+            remoteModal.show = false
+            loadResources()
+        } else {
+            showToast('导入失败: ' + (data.error || '未知错误'), 'error')
+        }
+    } catch (e) {
+        showToast('导入失败: ' + e.message, 'error')
+    }
+    remoteModal.loading = false
+}
+
+// 刷新远程订阅
+export const refreshRemote = async (item) => {
+    if (item.type !== 'remote') return
+
+    item.refreshing = true
+    try {
+        const res = await authFetch(`${API}/remote/refresh/${item.id}`, {
+            method: 'POST'
+        })
+
+        if (!res) return
+
+        const data = await res.json()
+        if (data.success) {
+            showToast(`刷新成功！当前 ${data.data.nodeCount} 个节点`, 'success')
+            loadResources()
+        } else {
+            showToast('刷新失败: ' + (data.error || '未知错误'), 'error')
+        }
+    } catch (e) {
+        showToast('刷新失败: ' + e.message, 'error')
+    }
+    item.refreshing = false
+}

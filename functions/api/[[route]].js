@@ -4,6 +4,7 @@ import { handle } from 'hono/cloudflare-pages'
 import { generateToken, safeBase64Encode } from '../_lib/utils.js';
 import { generateNodeLink, toClashProxy, assembleGroupConfig } from '../_lib/generator.js';
 import { parseNodesCommon } from '../_lib/parser.js';
+import { processRemoteSubscription } from '../_lib/fetcher.js';
 
 const app = new Hono().basePath('/api')
 
@@ -14,7 +15,8 @@ app.use('/*', async (c, next) => {
         const migrations = [
             `ALTER TABLE groups ADD COLUMN cached_yaml TEXT`,
             `ALTER TABLE groups ADD COLUMN access_count INTEGER DEFAULT 0`,
-            `ALTER TABLE groups ADD COLUMN last_accessed TEXT`
+            `ALTER TABLE groups ADD COLUMN last_accessed TEXT`,
+            `ALTER TABLE subscriptions ADD COLUMN source_url TEXT`
         ];
         for (const sql of migrations) {
             try { await c.env.DB.prepare(sql).run(); } catch (e) { /* 字段已存在则忽略 */ }
@@ -249,6 +251,58 @@ app.post('/subs/delete', async (c) => {
 })
 app.post('/sort', async (c) => { const { ids } = await c.req.json(); const s = c.env.DB.prepare("UPDATE subscriptions SET sort_order=? WHERE id=?"); await c.env.DB.batch(ids.map((id, i) => s.bind(i, id))); return c.json({ success: true }) })
 app.post('/subs/reorder', async (c) => { const { order } = await c.req.json(); const s = c.env.DB.prepare("UPDATE subscriptions SET sort_order=? WHERE id=?"); await c.env.DB.batch(order.map((id, i) => s.bind(i, id))); return c.json({ success: true }) })
+
+// --- 远程订阅源管理 ---
+app.post('/remote', async (c) => {
+    const b = await c.req.json();
+    const sourceUrl = b.url;
+    const name = b.name || '';
+
+    if (!sourceUrl) return c.json({ success: false, error: '请输入订阅链接' }, 400);
+
+    try {
+        const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sourceUrl, parseNodesCommon);
+
+        const finalName = name || subInfo.fileName || `远程订阅 (${nodes.length}个节点)`;
+
+        await c.env.DB.prepare(
+            "INSERT INTO subscriptions (name, url, source_url, type, params, info, sort_order, status) VALUES (?,?,?,?,?,?,0,1)"
+        ).bind(
+            finalName,
+            nodeLinks,
+            sourceUrl,
+            'remote',
+            JSON.stringify({}),
+            JSON.stringify(subInfo)
+        ).run();
+
+        return c.json({ success: true, data: { name: finalName, nodeCount: nodes.length, subInfo } });
+    } catch (e) {
+        return c.json({ success: false, error: e.message }, 500);
+    }
+})
+
+app.post('/remote/refresh/:id', async (c) => {
+    const id = c.req.param('id');
+
+    try {
+        const sub = await c.env.DB.prepare("SELECT * FROM subscriptions WHERE id = ? AND type = 'remote'").bind(id).first();
+        if (!sub) return c.json({ success: false, error: '资源不存在或不是远程订阅类型' }, 404);
+
+        const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sub.source_url, parseNodesCommon);
+
+        await c.env.DB.prepare(
+            "UPDATE subscriptions SET url = ?, info = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).bind(nodeLinks, JSON.stringify(subInfo), id).run();
+
+        // 刷新关联的聚合组缓存
+        await refreshGroupCacheByResourceIds(c.env.DB, [id]);
+
+        return c.json({ success: true, data: { nodeCount: nodes.length, subInfo } });
+    } catch (e) {
+        return c.json({ success: false, error: e.message }, 500);
+    }
+})
 
 // --- 聚合组管理 ---
 app.get('/groups', async (c) => {
