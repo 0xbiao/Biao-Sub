@@ -216,6 +216,11 @@
                                         <div class="text-xs text-adaptive-muted mt-1">包含资源: <span
                                                 class="text-adaptive-white font-bold">{{ getGroupResourceCount(group)
                                                 }}</span> 个</div>
+                                        <div class="text-xs text-adaptive-muted mt-0.5">
+                                            <i class="fa-solid fa-chart-simple text-info mr-1"></i>访问
+                                            <span class="text-adaptive-white font-bold">{{ group.access_count || 0 }}</span> 次
+                                            <span v-if="group.last_accessed" class="ml-1 opacity-70">· {{ formatTime(group.last_accessed) }}</span>
+                                        </div>
                                     </div>
                                     <div class="flex gap-2 flex-wrap">
                                         <button @click="copyGroupLink(group, 'clash')"

@@ -8,7 +8,7 @@ import {
 } from './store.js'
 
 // 导入工具函数
-import { showToast, copyText, getProgressClass, isExpired } from './utils.js'
+import { showToast, copyText, getProgressClass, isExpired, formatTime } from './utils.js'
 
 // 导入API
 import { loadResources, loadGroups, loadTemplates } from './api.js'
@@ -76,7 +76,7 @@ createApp({
             clashSelectedList, resourceListEl, previewListEl, groupResourceListEl, groupListEl,
 
             // 工具函数
-            showToast, copyText, getProgressClass, isExpired,
+            showToast, copyText, getProgressClass, isExpired, formatTime,
             toggleTheme, // 使用独立模块的主题切换
 
             // 认证

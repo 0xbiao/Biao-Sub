@@ -11,10 +11,13 @@ const app = new Hono().basePath('/api')
 let migrationDone = false;
 app.use('/*', async (c, next) => {
     if (!migrationDone) {
-        try {
-            await c.env.DB.prepare(`ALTER TABLE groups ADD COLUMN cached_yaml TEXT`).run();
-        } catch (e) {
-            // 如果字段已存在，会报错，忽略即可
+        const migrations = [
+            `ALTER TABLE groups ADD COLUMN cached_yaml TEXT`,
+            `ALTER TABLE groups ADD COLUMN access_count INTEGER DEFAULT 0`,
+            `ALTER TABLE groups ADD COLUMN last_accessed TEXT`
+        ];
+        for (const sql of migrations) {
+            try { await c.env.DB.prepare(sql).run(); } catch (e) { /* 字段已存在则忽略 */ }
         }
         migrationDone = true;
     }
@@ -40,8 +43,14 @@ app.get('/g/:token', async (c) => {
 
     try {
         // 1. 优先尝试从缓存读取
-        const group = await c.env.DB.prepare("SELECT name, cached_yaml, clash_config FROM groups WHERE token = ? AND status = 1").bind(token).first();
+        const group = await c.env.DB.prepare("SELECT name, cached_yaml, clash_config, config FROM groups WHERE token = ? AND status = 1").bind(token).first();
         if (!group) return c.text('Invalid Group Token', 404);
+
+        // 异步更新访问统计（不阻塞响应）
+        c.executionCtx.waitUntil(
+            c.env.DB.prepare("UPDATE groups SET access_count = COALESCE(access_count, 0) + 1, last_accessed = datetime('now') WHERE token = ?")
+                .bind(token).run()
+        );
 
         // 设置文件名
         const filename = encodeURIComponent(group.name || 'GroupConfig');
