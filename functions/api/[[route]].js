@@ -244,13 +244,40 @@ app.post('/subs/reorder', async (c) => { const { order } = await c.req.json(); c
 // --- 聚合组管理 ---
 app.get('/groups', async (c) => {
     const { results } = await c.env.DB.prepare("SELECT * FROM groups ORDER BY sort_order ASC, id DESC").all();
-    return c.json({
-        success: true, data: results.map(g => ({
-            ...g,
-            config: JSON.parse(g.config || '[]'),
-            clash_config: g.clash_config ? JSON.parse(g.clash_config) : { mode: 'generate', header: "", groups: [], rules: "", resources: [], raw_yaml: "" }
-        }))
-    })
+
+    // 获取所有有效的资源ID
+    const { results: allSubs } = await c.env.DB.prepare("SELECT id FROM subscriptions").all();
+    const validIds = new Set(allSubs.map(s => s.id));
+
+    const cleanupUpdates = [];
+
+    const data = results.map(g => {
+        const config = JSON.parse(g.config || '[]');
+        const clashConfig = g.clash_config ? JSON.parse(g.clash_config) : { mode: 'generate', header: "", groups: [], rules: "", resources: [], raw_yaml: "" };
+
+        // 过滤掉不存在的资源引用
+        const cleanedConfig = config.filter(c => validIds.has(c.subId));
+        if (clashConfig.resources) {
+            clashConfig.resources = clashConfig.resources.filter(r => validIds.has(r.subId));
+        }
+
+        // 如果有变化，记录需要清理的聚合组
+        if (cleanedConfig.length !== config.length) {
+            cleanupUpdates.push(
+                c.env.DB.prepare("UPDATE groups SET config = ?, clash_config = ? WHERE id = ?")
+                    .bind(JSON.stringify(cleanedConfig), JSON.stringify(clashConfig), g.id)
+            );
+        }
+
+        return { ...g, config: cleanedConfig, clash_config: clashConfig };
+    });
+
+    // 异步清理数据库中的无效引用
+    if (cleanupUpdates.length > 0) {
+        c.executionCtx.waitUntil(c.env.DB.batch(cleanupUpdates));
+    }
+
+    return c.json({ success: true, data });
 })
 app.post('/groups', async (c) => {
     const b = await c.req.json();
