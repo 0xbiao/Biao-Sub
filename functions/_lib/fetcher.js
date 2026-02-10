@@ -9,59 +9,88 @@ import { generateNodeLink } from './generator.js';
  * @returns {Promise<{content: string, subInfo: object}>}
  */
 export const fetchSubscription = async (url) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15秒超时
+    // 自动添加 flag=clash 参数（如果 URL 中没有的话）
+    const fetchUrl = new URL(url);
+    if (!fetchUrl.searchParams.has('flag')) {
+        fetchUrl.searchParams.set('flag', 'clash');
+    }
 
-    try {
-        const res = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-                'User-Agent': 'ClashForAndroid/2.5.12',
-                'Accept': '*/*'
-            },
-            redirect: 'follow'
-        });
+    // 多个 UA 备选，依次尝试
+    const userAgents = [
+        'clash-verge/v1.7.7',
+        'ClashX Pro/1.72.0.4',
+        'clash.meta',
+        'ClashForAndroid/2.5.12'
+    ];
 
-        clearTimeout(timeout);
+    let lastError = null;
 
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
+    for (const ua of userAgents) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
-        const content = await res.text();
+        try {
+            const res = await fetch(fetchUrl.toString(), {
+                signal: controller.signal,
+                headers: {
+                    'User-Agent': ua,
+                    'Accept': '*/*',
+                    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                    'Cache-Control': 'no-cache'
+                },
+                redirect: 'follow'
+            });
 
-        // 解析 Subscription-Userinfo 响应头（流量/到期信息）
-        const subInfo = {};
-        const userinfo = res.headers.get('Subscription-Userinfo');
-        if (userinfo) {
-            const parts = userinfo.split(';').map(s => s.trim());
-            for (const part of parts) {
-                const [key, val] = part.split('=').map(s => s.trim());
-                if (key && val) subInfo[key] = parseInt(val) || val;
+            clearTimeout(timeout);
+
+            if (res.status === 403 || res.status === 401) {
+                lastError = new Error(`HTTP ${res.status}: ${res.statusText} (UA: ${ua})`);
+                continue; // 尝试下一个 UA
             }
-        }
 
-        // 读取订阅名称
-        const disposition = res.headers.get('Content-Disposition');
-        if (disposition) {
-            const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
-            if (match) {
-                try {
-                    subInfo.fileName = decodeURIComponent(match[1].replace(/\.yaml$/i, ''));
-                } catch (e) {
-                    subInfo.fileName = match[1];
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+
+            const content = await res.text();
+
+            // 解析 Subscription-Userinfo 响应头（流量/到期信息）
+            const subInfo = {};
+            const userinfo = res.headers.get('Subscription-Userinfo');
+            if (userinfo) {
+                const parts = userinfo.split(';').map(s => s.trim());
+                for (const part of parts) {
+                    const [key, val] = part.split('=').map(s => s.trim());
+                    if (key && val) subInfo[key] = parseInt(val) || val;
                 }
             }
-        }
 
-        return { content, subInfo };
-    } catch (e) {
-        clearTimeout(timeout);
-        if (e.name === 'AbortError') {
-            throw new Error('请求超时（15秒）');
+            // 读取订阅名称
+            const disposition = res.headers.get('Content-Disposition');
+            if (disposition) {
+                const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
+                if (match) {
+                    try {
+                        subInfo.fileName = decodeURIComponent(match[1].replace(/\.yaml$/i, ''));
+                    } catch (e) {
+                        subInfo.fileName = match[1];
+                    }
+                }
+            }
+
+            return { content, subInfo };
+        } catch (e) {
+            clearTimeout(timeout);
+            if (e.name === 'AbortError') {
+                throw new Error('请求超时（15秒）');
+            }
+            lastError = e;
+            continue; // 尝试下一个 UA
         }
-        throw e;
     }
+
+    // 所有 UA 都失败了
+    throw lastError || new Error('所有请求方式均失败');
 };
 
 /**
