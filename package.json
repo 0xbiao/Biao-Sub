@@ -12,6 +12,7 @@
   "dependencies": {
     "hono": "^3.10.0",
     "pinia": "^2.1.7",
+    "sortablejs": "^1.15.6",
     "vue": "^3.4.15"
   },
   "devDependencies": {

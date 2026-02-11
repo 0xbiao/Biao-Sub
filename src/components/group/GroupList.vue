@@ -116,7 +116,7 @@ let sortableInstance = null
 async function initSortable() {
   if (!groupListRef.value) return
   try {
-    const Sortable = (await import('https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm')).default
+    const { default: Sortable } = await import('sortablejs')
     if (sortableInstance) sortableInstance.destroy()
     sortableInstance = new Sortable(groupListRef.value, {
       handle: '.drag-handle',

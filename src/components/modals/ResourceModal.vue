@@ -16,7 +16,7 @@
         <label class="label"><span class="label-text text-adaptive-muted">类型</span></label>
         <select v-model="store.resourceForm.type" class="select select-bordered bg-adaptive-input w-full">
           <option value="node">自建节点</option>
-          <option value="sub">订阅链接</option>
+          <option value="group">节点组</option>
         </select>
       </div>
 

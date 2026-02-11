@@ -40,16 +40,16 @@
             </div>
             <!-- 图标 -->
             <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              :class="r.type === 'node' ? 'bg-primary/20 text-primary' : r.type === 'remote' ? 'bg-success/20 text-success' : 'bg-secondary/20 text-secondary'">
-              <i :class="r.type === 'node' ? 'fa-solid fa-server' : r.type === 'remote' ? 'fa-solid fa-cloud-arrow-down' : 'fa-solid fa-plane'" class="text-sm sm:text-base"></i>
+              :class="r.type === 'node' ? 'bg-primary/20 text-primary' : r.type === 'remote' ? 'bg-success/20 text-success' : r.type === 'group' ? 'bg-warning/20 text-warning' : 'bg-secondary/20 text-secondary'">
+              <i :class="r.type === 'node' ? 'fa-solid fa-server' : r.type === 'remote' ? 'fa-solid fa-cloud-arrow-down' : r.type === 'group' ? 'fa-solid fa-folder-tree' : 'fa-solid fa-plane'" class="text-sm sm:text-base"></i>
             </div>
             <!-- 信息 -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="font-bold text-adaptive-white text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{{ r.name }}</h3>
                 <span class="badge badge-sm"
-                  :class="r.type === 'node' ? 'badge-primary' : r.type === 'remote' ? 'badge-success' : 'badge-secondary'">
-                  {{ r.type === 'node' ? '节点' : r.type === 'remote' ? '远程' : '订阅' }}
+                  :class="r.type === 'node' ? 'badge-primary' : r.type === 'remote' ? 'badge-success' : r.type === 'group' ? 'badge-warning' : 'badge-secondary'">
+                  {{ r.type === 'node' ? '节点' : r.type === 'remote' ? '远程' : r.type === 'group' ? '节点组' : '订阅' }}
                 </span>
                 <span v-if="r.info && r.info.nodeCount" class="badge badge-ghost badge-sm">
                   <i class="fa-solid fa-diagram-project mr-1"></i> {{ r.info.nodeCount }}个节点
@@ -149,7 +149,7 @@ let sortableInstance = null
 async function initSortable() {
   if (!resourceListRef.value) return
   try {
-    const Sortable = (await import('https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm')).default
+    const { default: Sortable } = await import('sortablejs')
     if (sortableInstance) sortableInstance.destroy()
     sortableInstance = new Sortable(resourceListRef.value, {
       handle: '.drag-handle',
