@@ -32,10 +32,10 @@
             <i class="fa-solid fa-grip-vertical text-adaptive-muted"></i>
           </div>
           <!-- 序号 -->
-          <span class="badge badge-ghost badge-sm flex-shrink-0 w-8 text-center">{{ i + 1 }}</span>
+
           <!-- 协议图标 -->
           <span class="badge badge-sm flex-shrink-0"
-            :class="getProtocolClass(node.protocol)">{{ node.protocol || '?' }}</span>
+            :class="getProtocolClass(getProtocol(node))">{{ getProtocol(node) }}</span>
           <!-- 名称 -->
           <span v-if="!store.previewModal.editMode"
             class="text-sm text-adaptive-white truncate flex-1">{{ node.name || '未命名' }}</span>
@@ -76,6 +76,15 @@ import { API } from '../../api/config.js'
 const store = useMainStore()
 const previewListRef = ref(null)
 let sortableInstance = null
+
+function getProtocol(node) {
+  if (node.protocol) return node.protocol
+  if (node.link) {
+    const m = node.link.match(/^(\w+):\/\//)
+    if (m) return m[1].replace('hysteria2', 'hy2')
+  }
+  return '?'
+}
 
 function getProtocolClass(protocol) {
   const map = { vmess: 'badge-primary', vless: 'badge-secondary', trojan: 'badge-warning', ss: 'badge-info', hy2: 'badge-accent', hysteria2: 'badge-accent', tuic: 'badge-success' }
