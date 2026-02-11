@@ -11,6 +11,7 @@ export const useMainStore = defineStore('main', () => {
     const stats = reactive({
         nodeCount: computed(() => resources.value.filter(r => r.type === 'node').length),
         groupCount: computed(() => resources.value.filter(r => r.type === 'group').length),
+        remoteCount: computed(() => resources.value.filter(r => r.type === 'remote').length),
         aggregateCount: computed(() => groups.value.length),
         totalActualNodes: computed(() => {
             return resources.value.reduce((sum, r) => {
@@ -28,6 +29,7 @@ export const useMainStore = defineStore('main', () => {
     // ============ UI 状态 ============
     const theme = ref(localStorage.getItem('theme') || 'dark')
     const currentTab = ref('resources')
+    const resourceFilter = ref('all')
     const submitting = ref(false)
     const toast = reactive({ show: false, message: '', type: 'success' })
 
@@ -101,7 +103,7 @@ export const useMainStore = defineStore('main', () => {
     return {
         resources, groups, userTemplates, stats,
         isLoggedIn, loginPassword, loginLoading,
-        theme, currentTab, submitting, toast,
+        theme, currentTab, resourceFilter, submitting, toast,
         batchMode, selectedResources,
         resourceModal, groupModal, templateModal, previewModal, settingsModal,
         resourceForm, groupForm, groupNameError,

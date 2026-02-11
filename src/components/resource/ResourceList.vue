@@ -20,10 +20,25 @@
         <button class="btn btn-xs btn-ghost" @click="store.selectedResources = []">取消</button>
       </div>
     </div>
+    <!-- 筛选按钮 -->
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-xs gap-1" :class="store.resourceFilter === 'all' ? 'btn-primary' : 'btn-ghost border border-panel-border'" @click="store.resourceFilter = 'all'">
+        全部 <span class="badge badge-xs">{{ store.resources.length }}</span>
+      </button>
+      <button class="btn btn-xs gap-1" :class="store.resourceFilter === 'node' ? 'btn-primary' : 'btn-ghost border border-panel-border'" @click="store.resourceFilter = 'node'">
+        <i class="fa-solid fa-server"></i> 自建节点 <span class="badge badge-xs">{{ store.stats.nodeCount }}</span>
+      </button>
+      <button class="btn btn-xs gap-1" :class="store.resourceFilter === 'group' ? 'btn-warning' : 'btn-ghost border border-panel-border'" @click="store.resourceFilter = 'group'">
+        <i class="fa-solid fa-folder-tree"></i> 节点组 <span class="badge badge-xs">{{ store.stats.groupCount }}</span>
+      </button>
+      <button class="btn btn-xs gap-1" :class="store.resourceFilter === 'remote' ? 'btn-success' : 'btn-ghost border border-panel-border'" @click="store.resourceFilter = 'remote'">
+        <i class="fa-solid fa-cloud-arrow-down"></i> 远程订阅 <span class="badge badge-xs">{{ store.stats.remoteCount }}</span>
+      </button>
+    </div>
 
     <!-- 资源列表 -->
     <div ref="resourceListRef" class="grid gap-3 sm:gap-4">
-      <div v-for="r in store.resources" :key="r.id"
+      <div v-for="r in filteredResources" :key="r.id"
         class="card glass-panel hover:shadow-xl transition-all duration-300 group border border-transparent hover:border-primary/30"
         :data-id="r.id">
         <div class="card-body p-3 sm:p-4">
@@ -86,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useMainStore } from '../../stores/main.js'
 import { authFetch, loadResources } from '../../api/index.js'
 import { showToast } from '../../utils/helpers.js'
@@ -96,6 +111,11 @@ const store = useMainStore()
 const resourceListRef = ref(null)
 
 const emit = defineEmits(['preview', 'openRemote', 'refreshRemote'])
+
+const filteredResources = computed(() => {
+  if (store.resourceFilter === 'all') return store.resources
+  return store.resources.filter(r => r.type === store.resourceFilter)
+})
 
 function openAddResource() {
   store.resourceForm = { name: '', url: '', type: 'node' }
