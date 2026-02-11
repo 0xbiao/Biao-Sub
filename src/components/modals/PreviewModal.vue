@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useMainStore } from '../../stores/main.js'
 import { authFetch, loadResources } from '../../api/index.js'
 import { showToast, copyText, updateLinkName } from '../../utils/helpers.js'
@@ -75,20 +75,50 @@ import { API } from '../../api/config.js'
 
 const store = useMainStore()
 const previewListRef = ref(null)
+let sortableInstance = null
 
 function getProtocolClass(protocol) {
   const map = { vmess: 'badge-primary', vless: 'badge-secondary', trojan: 'badge-warning', ss: 'badge-info', hy2: 'badge-accent', hysteria2: 'badge-accent', tuic: 'badge-success' }
   return map[protocol] || 'badge-ghost'
 }
 
-function toggleSortMode() {
+async function toggleSortMode() {
   store.previewModal.sortMode = !store.previewModal.sortMode
-  if (store.previewModal.sortMode) store.previewModal.editMode = false
+  if (store.previewModal.sortMode) {
+    store.previewModal.editMode = false
+    // 初始化 SortableJS
+    await nextTick()
+    if (previewListRef.value) {
+      try {
+        const { default: Sortable } = await import('sortablejs')
+        if (sortableInstance) sortableInstance.destroy()
+        sortableInstance = new Sortable(previewListRef.value, {
+          handle: '.drag-handle',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          dragClass: 'sortable-drag',
+          onEnd: (evt) => {
+            // 同步数组顺序
+            const nodes = [...store.previewModal.nodes]
+            const [moved] = nodes.splice(evt.oldIndex, 1)
+            nodes.splice(evt.newIndex, 0, moved)
+            store.previewModal.nodes = nodes
+          }
+        })
+      } catch (e) { console.error('Sortable init failed:', e) }
+    }
+  } else {
+    // 退出排序模式，销毁实例
+    if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null }
+  }
 }
 
 function toggleEditMode() {
   store.previewModal.editMode = !store.previewModal.editMode
-  if (store.previewModal.editMode) store.previewModal.sortMode = false
+  if (store.previewModal.editMode) {
+    store.previewModal.sortMode = false
+    if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null }
+  }
 }
 
 function copyNode(node) {
@@ -104,13 +134,14 @@ function closePreview() {
   store.previewModal.show = false
   store.previewModal.sortMode = false
   store.previewModal.editMode = false
+  if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null }
 }
 
 async function saveChanges() {
   if (!store.previewModal.resourceId) return
 
   try {
-    // 重建节点链接
+    // 重建节点链接（按当前顺序）
     const newLinks = store.previewModal.nodes.map(n => {
       if (n.nameChanged && n.link) {
         return updateLinkName(n.link, n.name)

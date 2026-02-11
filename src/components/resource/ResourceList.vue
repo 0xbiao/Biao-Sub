@@ -55,7 +55,7 @@
                   <i class="fa-solid fa-diagram-project mr-1"></i> {{ r.info.nodeCount }}个节点
                 </span>
               </div>
-              <p class="text-xs text-adaptive-muted mt-1 truncate">{{ r.url ? r.url.substring(0, 80) + (r.url.length > 80 ? '...' : '') : '无内容' }}</p>
+
             </div>
             <!-- 操作按钮 -->
             <div class="flex gap-1 sm:gap-1 flex-shrink-0">
