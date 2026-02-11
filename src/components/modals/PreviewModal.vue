@@ -24,7 +24,7 @@
 
       <!-- 节点列表 -->
       <div ref="previewListRef" class="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar space-y-2">
-        <div v-for="(node, i) in store.previewModal.nodes" :key="i"
+        <div v-for="(node, i) in store.previewModal.nodes" :key="node.link || i"
           class="flex items-center gap-3 p-3 rounded-lg bg-adaptive-input border border-panel-border hover:border-primary/30 transition-all"
           :data-index="i">
           <!-- 拖拽手柄 -->
@@ -97,13 +97,6 @@ async function toggleSortMode() {
           animation: 150,
           ghostClass: 'sortable-ghost',
           dragClass: 'sortable-drag',
-          onEnd: (evt) => {
-            // 同步数组顺序
-            const nodes = [...store.previewModal.nodes]
-            const [moved] = nodes.splice(evt.oldIndex, 1)
-            nodes.splice(evt.newIndex, 0, moved)
-            store.previewModal.nodes = nodes
-          }
         })
       } catch (e) { console.error('Sortable init failed:', e) }
     }
@@ -141,11 +134,15 @@ async function saveChanges() {
   if (!store.previewModal.resourceId) return
 
   try {
+    // 从 DOM 顺序重建节点数组
+    let orderedNodes = store.previewModal.nodes
+    if (store.previewModal.sortMode && previewListRef.value) {
+      const domOrder = Array.from(previewListRef.value.children).map(el => parseInt(el.dataset.index))
+      orderedNodes = domOrder.map(idx => store.previewModal.nodes[idx])
+    }
+
     // 重建节点链接（按当前顺序）
-    const newLinks = store.previewModal.nodes.map(n => {
-      if (n.nameChanged && n.link) {
-        return updateLinkName(n.link, n.name)
-      }
+    const newLinks = orderedNodes.map(n => {
       return n.link
     }).filter(Boolean).join('\n')
 
