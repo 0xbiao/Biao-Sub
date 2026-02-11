@@ -1,5 +1,5 @@
 <template>
-  <div data-theme="dark" class="min-h-screen">
+  <div :data-theme="store.theme" class="min-h-screen">
     <!-- 登录遮罩 -->
     <LoginOverlay v-if="!store.isLoggedIn" />
 
