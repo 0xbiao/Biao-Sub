@@ -114,3 +114,13 @@ textarea.code-editor {
 .sortable-drag {
     background: var(--input-bg) !important;
 }
+
+/* 移动端弹窗适配 */
+@media (max-width: 640px) {
+    .modal-box {
+        width: calc(100% - 1.5rem) !important;
+        max-width: 100% !important;
+        margin: 0.75rem !important;
+        padding: 1rem !important;
+    }
+}

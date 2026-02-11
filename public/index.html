@@ -18,7 +18,7 @@
     <div id="app">
         <div v-if="!isLoggedIn"
             class="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <div class="card w-96 glass-panel shadow-2xl overflow-hidden">
+            <div class="card w-full max-w-sm mx-4 glass-panel shadow-2xl overflow-hidden">
                 <div class="card-body text-center p-8">
                     <div class="mb-6"><i class="fa-solid fa-shield-halved text-6xl text-primary animate-pulse"></i>
                     </div>
@@ -33,36 +33,40 @@
             </div>
         </div>
 
-        <div class="container mx-auto px-4 py-8 max-w-5xl transition-all duration-500"
+        <div class="container mx-auto px-3 py-4 sm:px-4 sm:py-8 max-w-5xl transition-all duration-500"
             :class="{ 'blur-sm pointer-events-none': !isLoggedIn }">
-            <div class="navbar glass-panel rounded-2xl mb-8 shadow-xl">
+            <div class="navbar glass-panel rounded-2xl mb-4 sm:mb-8 shadow-xl px-2 sm:px-4">
                 <div class="flex-1">
-                    <a class="btn btn-ghost normal-case text-2xl font-bold text-adaptive-white">
+                    <a class="btn btn-ghost normal-case text-lg sm:text-2xl font-bold text-adaptive-white">
                         <i class="fa-solid fa-bolt text-yellow-500 mr-2"></i> BiaoSUB
                     </a>
                 </div>
                 <div class="flex-none gap-2">
                     <!-- 主题切换按钮 -->
-                    <button @click="toggleTheme" class="btn btn-circle btn-ghost tooltip tooltip-bottom"
+                    <button @click="toggleTheme"
+                        class="btn btn-circle btn-sm sm:btn-md btn-ghost tooltip tooltip-bottom"
                         :data-tip="theme === 'dark' ? '切换亮色' : '切换深色'">
                         <i v-if="theme === 'dark'" class="fa-solid fa-sun text-xl text-yellow-400"></i>
                         <i v-else class="fa-solid fa-moon text-xl text-adaptive-muted"></i>
                     </button>
 
-                    <button @click="openSettings" class="btn btn-circle btn-ghost tooltip tooltip-bottom"
-                        data-tip="设置"><i class="fa-solid fa-gear text-xl"></i></button>
-                    <button @click="logout" class="btn btn-circle btn-ghost text-red-400 tooltip tooltip-bottom"
+                    <button @click="openSettings"
+                        class="btn btn-circle btn-sm sm:btn-md btn-ghost tooltip tooltip-bottom" data-tip="设置"><i
+                            class="fa-solid fa-gear text-xl"></i></button>
+                    <button @click="logout"
+                        class="btn btn-circle btn-sm sm:btn-md btn-ghost text-red-400 tooltip tooltip-bottom"
                         data-tip="退出"><i class="fa-solid fa-power-off text-xl"></i></button>
                 </div>
             </div>
 
-            <div class="tabs tabs-boxed glass-panel mb-8 p-1.5 shadow-xl border border-panel-border overflow-hidden">
-                <a class="tab tab-lg flex-1 transition-all duration-300 gap-2 !h-12"
+            <div
+                class="tabs tabs-boxed glass-panel mb-4 sm:mb-8 p-1.5 shadow-xl border border-panel-border overflow-hidden">
+                <a class="tab tab-sm sm:tab-lg flex-1 transition-all duration-300 gap-1 sm:gap-2 !h-10 sm:!h-12"
                     :class="{'tab-active bg-primary text-white shadow-md': currentTab === 'resources'}"
                     @click="currentTab = 'resources'">
                     <i class="fa-solid fa-database text-lg"></i> <span class="font-bold">资源池</span>
                 </a>
-                <a class="tab tab-lg flex-1 transition-all duration-300 gap-2 !h-12"
+                <a class="tab tab-sm sm:tab-lg flex-1 transition-all duration-300 gap-1 sm:gap-2 !h-10 sm:!h-12"
                     :class="{'tab-active bg-accent text-white shadow-md': currentTab === 'groups'}"
                     @click="currentTab = 'groups'">
                     <i class="fa-solid fa-layer-group text-lg"></i> <span class="font-bold">聚合订阅组</span>
@@ -132,7 +136,7 @@
 
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-sm text-adaptive-muted font-medium">所有原始订阅和自建节点</div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-1 sm:gap-2 flex-wrap">
                         <div v-if="batchMode" class="flex gap-2">
                             <button @click="selectAllResources" class="btn btn-sm btn-ghost">全选</button>
                             <button @click="executeBatchDelete" class="btn btn-sm btn-error text-white"
@@ -210,7 +214,7 @@
                 </div>
                 <div class="grid grid-cols-1 gap-6" ref="groupListEl">
                     <div v-for="group in groups" :key="group.id" :data-id="group.id" class="card glass-panel">
-                        <div class="card-body p-5">
+                        <div class="card-body p-3 sm:p-5">
                             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div class="flex items-center gap-3">
                                     <i
@@ -230,20 +234,21 @@
                                     </div>
                                     <div class="flex gap-2 flex-wrap">
                                         <button @click="copyGroupLink(group, 'clash')"
-                                            class="btn btn-sm bg-adaptive-input hover:bg-primary/10 text-adaptive-white border-panel-border shadow-sm">
+                                            class="btn btn-xs sm:btn-sm bg-adaptive-input hover:bg-primary/10 text-adaptive-white border-panel-border shadow-sm">
                                             <i class="fa-solid fa-cat text-orange-400"></i> Clash
                                         </button>
                                         <button @click="copyGroupLink(group, 'base64')"
-                                            class="btn btn-sm bg-adaptive-input hover:bg-primary/10 text-adaptive-white border-panel-border shadow-sm">
+                                            class="btn btn-xs sm:btn-sm bg-adaptive-input hover:bg-primary/10 text-adaptive-white border-panel-border shadow-sm">
                                             <i class="fa-solid fa-link text-blue-400"></i> V2RayN
                                         </button>
 
-                                        <button @click="refreshToken(group)" class="btn btn-sm btn-ghost text-warning"
-                                            title="刷新密钥"><i class="fa-solid fa-key"></i></button>
-                                        <button @click="editGroup(group)" class="btn btn-sm btn-ghost"><i
+                                        <button @click="refreshToken(group)"
+                                            class="btn btn-xs sm:btn-sm btn-ghost text-warning" title="刷新密钥"><i
+                                                class="fa-solid fa-key"></i></button>
+                                        <button @click="editGroup(group)" class="btn btn-xs sm:btn-sm btn-ghost"><i
                                                 class="fa-solid fa-pen"></i></button>
                                         <button @click="deleteGroup(group.id)"
-                                            class="btn btn-sm btn-ghost text-error"><i
+                                            class="btn btn-xs sm:btn-sm btn-ghost text-error"><i
                                                 class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
