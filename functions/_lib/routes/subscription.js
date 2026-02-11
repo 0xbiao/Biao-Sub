@@ -67,8 +67,9 @@ export function registerSubRoutes(app) {
 
         let info = b.info || {};
         info.nodeCount = nodes.length;
-        await c.env.DB.prepare("INSERT INTO subscriptions (name,url,type,params,info,sort_order,status) VALUES (?,?,?,?,?,0,1)")
-            .bind(b.name || (nodes.length > 0 ? nodes[0].name : 'New Resource'), b.url, type, JSON.stringify({}), JSON.stringify(info)).run();
+        const sortOrder = (type === 'node') ? 0 : 9999;
+        await c.env.DB.prepare("INSERT INTO subscriptions (name,url,type,params,info,sort_order,status) VALUES (?,?,?,?,?,?,1)")
+            .bind(b.name || (nodes.length > 0 ? nodes[0].name : 'New Resource'), b.url, type, JSON.stringify({}), JSON.stringify(info), sortOrder).run();
         return c.json({ success: true });
     })
 

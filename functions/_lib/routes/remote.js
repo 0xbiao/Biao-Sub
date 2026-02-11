@@ -16,7 +16,7 @@ export function registerRemoteRoutes(app) {
             const finalName = name || subInfo.fileName || `远程订阅 (${nodes.length}个节点)`;
 
             await c.env.DB.prepare(
-                "INSERT INTO subscriptions (name, url, source_url, type, params, info, sort_order, status) VALUES (?,?,?,?,?,?,0,1)"
+                "INSERT INTO subscriptions (name, url, source_url, type, params, info, sort_order, status) VALUES (?,?,?,?,?,?,9999,1)"
             ).bind(
                 finalName, nodeLinks, sourceUrl, 'remote',
                 JSON.stringify({}), JSON.stringify(subInfo)
