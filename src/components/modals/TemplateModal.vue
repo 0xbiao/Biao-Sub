@@ -55,8 +55,7 @@ function selectTemplate(type, template) {
       mode: 'generate',
       header: defaultHeader,
       groups: [
-        { name: 'Proxy', type: 'select', proxies: [], useAllProxies: false },
-        { name: 'Auto', type: 'url-test', proxies: [], useAllProxies: false, url: 'http://www.gstatic.com/generate_204', interval: 300, tolerance: 50 }
+        { name: 'Proxy', type: 'select', proxies: [], useAllProxies: false }
       ],
       rules: defaultRules,
       resources: [],
