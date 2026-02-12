@@ -1,60 +1,117 @@
 <template>
   <dialog class="modal" :class="{ 'modal-open': store.clashNodeSelector.show }">
-    <div class="modal-box glass-panel max-w-2xl">
-      <h3 class="font-bold text-xl text-adaptive-white mb-4 flex items-center gap-2">
-        <i class="fa-solid fa-list-check text-primary"></i> 策略组节点选择
-      </h3>
+    <div class="modal-box glass-panel max-w-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-xl text-adaptive-white flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-primary"></i> 选择节点进入策略组
+        </h3>
+        <button class="btn btn-circle btn-ghost btn-sm" @click="store.clashNodeSelector.show = false">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
+      <p class="text-xs text-adaptive-muted mb-4">
+        <i class="fa-solid fa-circle-info text-primary mr-1"></i>
+        此节点将按 Clash 配置中的资源来对生成。
+      </p>
+
+      <!-- 已选节点数量 -->
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-adaptive-white font-bold">已选节点: {{ store.clashNodeSelector.tempSelected.length }}</span>
+        <div class="flex gap-2">
+          <button class="btn btn-xs btn-ghost" @click="selectAll">全选</button>
+          <button class="btn btn-xs btn-ghost text-error" @click="store.clashNodeSelector.tempSelected = []">清空</button>
+        </div>
+      </div>
+
+      <!-- 已选择区域 (拖拽排序标签) -->
+      <div v-if="store.clashNodeSelector.tempSelected.length > 0" class="mb-4 p-3 rounded-lg bg-base-300/50 border border-panel-border">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-grip text-primary text-xs"></i>
+          <span class="text-xs text-adaptive-muted font-semibold">已选择 (拖动可排序):</span>
+        </div>
+        <div ref="selectedTagsRef" class="flex flex-wrap gap-1.5">
+          <span v-for="name in store.clashNodeSelector.tempSelected" :key="name"
+            class="badge badge-primary gap-1 cursor-grab active:cursor-grabbing py-2.5 px-3 text-xs"
+            :data-name="name">
+            {{ name }}
+            <button @click.stop="removeProxy(name)" class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4 text-primary-content/60 hover:text-primary-content">
+              ×
+            </button>
+          </span>
+        </div>
+      </div>
+
+      <!-- 可选策略组 (引用组名) -->
+      <div v-if="store.clashNodeSelector.allGroupNames.length > 0" class="mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-sitemap text-accent text-xs"></i>
+          <span class="text-xs text-adaptive-muted font-semibold">可选策略组 (引用组名):</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span v-for="name in store.clashNodeSelector.allGroupNames" :key="name"
+            class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-accent' : 'badge-outline badge-accent hover:bg-accent/20'"
+            @click="toggleProxy(name)">
+            {{ name }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 可选资源组 (引用整组节点) -->
+      <div v-if="resourceGroupNames.length > 0" class="mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-cubes text-warning text-xs"></i>
+          <span class="text-xs text-adaptive-muted font-semibold">可选资源组 (引用整组节点):</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span v-for="name in resourceGroupNames" :key="name"
+            class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-warning' : 'badge-outline badge-warning hover:bg-warning/20'"
+            @click="toggleProxy(name)">
+            {{ name }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 内置代理 -->
       <div class="mb-4">
-        <p class="text-sm text-adaptive-muted mb-2">选择要加入策略组的代理</p>
-        <div class="tabs tabs-boxed p-1 mb-3">
-          <a class="tab tab-sm" :class="{'tab-active': selTab === 'nodes'}" @click="selTab = 'nodes'">节点名</a>
-          <a class="tab tab-sm" :class="{'tab-active': selTab === 'groups'}" @click="selTab = 'groups'">策略组</a>
-          <a class="tab tab-sm" :class="{'tab-active': selTab === 'builtin'}" @click="selTab = 'builtin'">内置</a>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-shield-halved text-success text-xs"></i>
+          <span class="text-xs text-adaptive-muted font-semibold">内置:</span>
         </div>
-
-        <!-- 节点名 -->
-        <div v-if="selTab === 'nodes'" class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
-          <div v-for="name in store.clashNodeSelector.allNodeNames" :key="name"
-            class="flex items-center gap-2 p-2 rounded-lg bg-adaptive-input hover:bg-primary/10 cursor-pointer"
+        <div class="flex flex-wrap gap-1.5">
+          <span v-for="name in ['DIRECT', 'REJECT']" :key="name"
+            class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-success' : 'badge-outline badge-success hover:bg-success/20'"
             @click="toggleProxy(name)">
-            <input type="checkbox" class="checkbox checkbox-primary checkbox-xs"
-              :checked="store.clashNodeSelector.tempSelected.includes(name)" @click.stop="toggleProxy(name)" />
-            <span class="text-sm text-adaptive-white truncate">{{ name }}</span>
-          </div>
-        </div>
-
-        <!-- 策略组 -->
-        <div v-if="selTab === 'groups'" class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
-          <div v-for="name in store.clashNodeSelector.allGroupNames" :key="name"
-            class="flex items-center gap-2 p-2 rounded-lg bg-adaptive-input hover:bg-accent/10 cursor-pointer"
-            @click="toggleProxy(name)">
-            <input type="checkbox" class="checkbox checkbox-accent checkbox-xs"
-              :checked="store.clashNodeSelector.tempSelected.includes(name)" @click.stop="toggleProxy(name)" />
-            <span class="text-sm text-adaptive-white truncate">{{ name }}</span>
-          </div>
-        </div>
-
-        <!-- 内置代理 -->
-        <div v-if="selTab === 'builtin'" class="space-y-1">
-          <div v-for="name in ['DIRECT', 'REJECT']" :key="name"
-            class="flex items-center gap-2 p-2 rounded-lg bg-adaptive-input hover:bg-warning/10 cursor-pointer"
-            @click="toggleProxy(name)">
-            <input type="checkbox" class="checkbox checkbox-warning checkbox-xs"
-              :checked="store.clashNodeSelector.tempSelected.includes(name)" @click.stop="toggleProxy(name)" />
-            <span class="text-sm text-adaptive-white">{{ name }}</span>
-          </div>
+            {{ name }}
+          </span>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 text-sm text-adaptive-muted mb-4">
-        <span>已选: {{ store.clashNodeSelector.tempSelected.length }}</span>
-        <button class="btn btn-xs btn-ghost" @click="store.clashNodeSelector.tempSelected = []">清空</button>
+      <!-- 单节点选择 -->
+      <div v-if="store.clashNodeSelector.allNodeNames.length > 0" class="mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-server text-info text-xs"></i>
+          <span class="text-xs text-adaptive-muted font-semibold">单节点选择:</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar p-1">
+          <span v-for="name in store.clashNodeSelector.allNodeNames" :key="name"
+            class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-info' : 'badge-outline badge-info hover:bg-info/20'"
+            @click="toggleProxy(name)">
+            {{ name }}
+          </span>
+        </div>
       </div>
 
+      <!-- 操作按钮 -->
       <div class="modal-action">
         <button class="btn btn-ghost" @click="store.clashNodeSelector.show = false">取消</button>
-        <button class="btn btn-primary" @click="confirmSelection">确认</button>
+        <button class="btn btn-primary" @click="confirmSelection">
+          <i class="fa-solid fa-check mr-1"></i> 确认选择
+        </button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop" @click="store.clashNodeSelector.show = false"></form>
@@ -62,17 +119,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useMainStore } from '../../stores/main.js'
 import { showToast } from '../../utils/helpers.js'
 
 const store = useMainStore()
-const selTab = ref('nodes')
+const selectedTagsRef = ref(null)
+
+// 资源组名列表 (来自已选资源)
+const resourceGroupNames = computed(() => {
+  return store.groupForm.config
+    .map(c => {
+      const r = store.resources.find(res => res.id === c.subId)
+      return r ? r.name : null
+    })
+    .filter(Boolean)
+})
 
 function toggleProxy(name) {
   const idx = store.clashNodeSelector.tempSelected.indexOf(name)
   if (idx === -1) store.clashNodeSelector.tempSelected.push(name)
   else store.clashNodeSelector.tempSelected.splice(idx, 1)
+}
+
+function removeProxy(name) {
+  const idx = store.clashNodeSelector.tempSelected.indexOf(name)
+  if (idx !== -1) store.clashNodeSelector.tempSelected.splice(idx, 1)
+}
+
+function selectAll() {
+  const all = [
+    ...store.clashNodeSelector.allGroupNames,
+    ...resourceGroupNames.value,
+    ...['DIRECT', 'REJECT'],
+    ...store.clashNodeSelector.allNodeNames
+  ]
+  store.clashNodeSelector.tempSelected = [...new Set(all)]
 }
 
 function confirmSelection() {
@@ -83,4 +165,27 @@ function confirmSelection() {
   store.clashNodeSelector.show = false
   showToast('节点选择已保存')
 }
+
+// 已选标签拖拽排序
+let sortableInstance = null
+async function initSortable() {
+  if (!selectedTagsRef.value) return
+  try {
+    const { default: Sortable } = await import('sortablejs')
+    if (sortableInstance) sortableInstance.destroy()
+    sortableInstance = new Sortable(selectedTagsRef.value, {
+      animation: 150,
+      ghostClass: 'opacity-30',
+      onEnd: () => {
+        const names = Array.from(selectedTagsRef.value.children)
+          .filter(el => el.dataset.name)
+          .map(el => el.dataset.name)
+        store.clashNodeSelector.tempSelected = names
+      }
+    })
+  } catch (e) { console.error('Sortable init failed:', e) }
+}
+
+watch(() => store.clashNodeSelector.tempSelected.length, () => { nextTick(initSortable) })
+watch(() => store.clashNodeSelector.show, (show) => { if (show) nextTick(initSortable) })
 </script>
