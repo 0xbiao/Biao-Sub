@@ -22,7 +22,7 @@
         </a>
         <a v-if="store.groupForm.clash_config.mode === 'raw'" class="tab flex-1"
           :class="{'tab-active': store.groupModal.tab==='raw'}" @click="store.groupModal.tab='raw'">
-          <i class="fa-solid fa-code mr-2"></i> Raw YAML
+          <i class="fa-solid fa-cloud-arrow-up mr-2"></i> 托管YAML
         </a>
       </div>
 
@@ -162,11 +162,34 @@
           </div>
         </div>
 
-        <!-- Tab: Raw YAML -->
+        <!-- Tab: 托管YAML -->
         <div v-show="store.groupModal.tab === 'raw'">
-          <textarea v-model="store.groupForm.clash_config.raw_yaml"
-            class="code-editor w-full h-96 textarea textarea-bordered bg-adaptive-input text-xs"
-            placeholder="完整的 Clash YAML 配置..."></textarea>
+          <!-- 文件上传区 -->
+          <div class="mb-4">
+            <label class="label"><span class="label-text text-adaptive-muted">上传 YAML 配置文件</span></label>
+            <div class="border-2 border-dashed border-panel-border rounded-lg p-6 text-center hover:border-warning/50 transition-colors cursor-pointer"
+              @click="$refs.yamlFileInput.click()" @dragover.prevent @drop.prevent="handleFileDrop">
+              <i class="fa-solid fa-cloud-arrow-up text-3xl text-warning mb-2"></i>
+              <p class="text-sm text-adaptive-muted">点击选择或拖拽 YAML 文件到此处</p>
+              <p class="text-xs text-adaptive-muted mt-1">支持 .yaml / .yml 格式</p>
+            </div>
+            <input ref="yamlFileInput" type="file" accept=".yaml,.yml" class="hidden" @change="handleFileSelect" />
+          </div>
+
+          <!-- 文件信息 -->
+          <div v-if="uploadedFileName" class="alert alert-info py-2 mb-4">
+            <i class="fa-solid fa-file-code"></i>
+            <span class="text-sm">已加载: {{ uploadedFileName }}</span>
+            <button class="btn btn-xs btn-ghost" @click="clearUploadedFile">清除</button>
+          </div>
+
+          <!-- YAML 预览/编辑 -->
+          <div class="form-control">
+            <label class="label"><span class="label-text text-adaptive-muted">YAML 内容（可直接编辑）</span></label>
+            <textarea v-model="store.groupForm.clash_config.raw_yaml"
+              class="code-editor w-full h-96 textarea textarea-bordered bg-adaptive-input text-xs font-mono"
+              placeholder="上传 YAML 文件或直接粘贴完整的 Clash 配置..."></textarea>
+          </div>
         </div>
       </div>
 
@@ -194,14 +217,50 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useMainStore } from '../../stores/main.js'
 import { authFetch, loadGroups, loadTemplates } from '../../api/index.js'
 import { showToast } from '../../utils/helpers.js'
 import { API } from '../../api/config.js'
 
 const store = useMainStore()
+const uploadedFileName = ref('')
 
 const emit = defineEmits(['openNodeSelector', 'openClashNodeSelector'])
+
+// === 文件上传 ===
+function handleFileSelect(e) {
+  const file = e.target.files[0]
+  if (file) readYamlFile(file)
+}
+
+function handleFileDrop(e) {
+  const file = e.dataTransfer.files[0]
+  if (file && (file.name.endsWith('.yaml') || file.name.endsWith('.yml'))) {
+    readYamlFile(file)
+  } else {
+    showToast('请上传 .yaml 或 .yml 文件', 'error')
+  }
+}
+
+function readYamlFile(file) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    store.groupForm.clash_config.raw_yaml = e.target.result
+    uploadedFileName.value = file.name
+    // 自动用文件名（去扩展名）设置组名
+    if (!store.groupForm.name) {
+      store.groupForm.name = file.name.replace(/\.(yaml|yml)$/i, '')
+    }
+    showToast(`已加载: ${file.name}`)
+  }
+  reader.readAsText(file)
+}
+
+function clearUploadedFile() {
+  store.groupForm.clash_config.raw_yaml = ''
+  uploadedFileName.value = ''
+}
 
 function isResourceSelected(id) {
   return store.groupForm.config.some(c => c.subId === id)

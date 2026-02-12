@@ -17,9 +17,9 @@
           <div class="text-xs text-adaptive-muted mt-1">从零开始自定义配置</div>
         </button>
         <button @click="selectTemplate('raw')" class="card bg-warning/5 hover:bg-warning/10 cursor-pointer transition-all duration-300 border border-warning/20 hover:border-warning/50 p-4 text-center">
-          <i class="fa-solid fa-code text-3xl text-warning mb-2"></i>
-          <div class="font-bold text-adaptive-white text-sm">Raw YAML</div>
-          <div class="text-xs text-adaptive-muted mt-1">直接手写完整YAML</div>
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-warning mb-2"></i>
+          <div class="font-bold text-adaptive-white text-sm">托管YAML</div>
+          <div class="text-xs text-adaptive-muted mt-1">上传YAML配置文件托管</div>
         </button>
         <!-- 已保存模板 -->
         <button v-for="t in store.userTemplates" :key="t.id" @click="selectTemplate('custom', t)"
