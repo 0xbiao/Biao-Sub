@@ -75,20 +75,43 @@
           <div v-if="store.groupForm.config.length > 0" class="mb-4">
             <div class="flex items-center justify-between mb-3">
               <h4 class="font-bold text-sm text-adaptive-white">已选资源排序</h4>
-              <span class="text-xs text-adaptive-muted">拖拽调整顺序</span>
+              <span class="text-xs text-adaptive-muted">拖拽排序 · 可设置链式代理</span>
             </div>
-            <div ref="selectedResourceListRef" class="space-y-1">
+            <div ref="selectedResourceListRef" class="space-y-2">
               <div v-for="(c, i) in store.groupForm.config" :key="c.subId"
-                class="flex items-center gap-2 p-2 rounded-lg bg-adaptive-input border border-panel-border" :data-sub-id="c.subId">
-                <div class="config-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
-                  <i class="fa-solid fa-grip-vertical text-adaptive-muted"></i>
+                class="rounded-lg bg-adaptive-input border border-panel-border overflow-hidden" :data-sub-id="c.subId">
+                <!-- 主行 -->
+                <div class="flex items-center gap-2 p-2">
+                  <div class="config-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
+                    <i class="fa-solid fa-grip-vertical text-adaptive-muted"></i>
+                  </div>
+                  <span class="text-xs text-adaptive-muted w-5 text-center">{{ i + 1 }}</span>
+                  <span class="flex-1 text-sm text-adaptive-white truncate">{{ getResourceName(c.subId) }}</span>
+                  <span v-if="c.filter" class="badge badge-outline badge-xs">筛选</span>
+                  <span v-if="c.dialerProxy && c.dialerProxy.enabled" class="badge badge-warning badge-xs gap-1">
+                    <i class="fa-solid fa-link text-[10px]"></i> 链式
+                  </span>
+                  <!-- 链式代理开关 -->
+                  <button @click="toggleDialerProxy(c)" class="btn btn-xs btn-ghost flex-shrink-0"
+                    :class="c.dialerProxy && c.dialerProxy.enabled ? 'text-warning' : 'text-adaptive-muted'"
+                    :data-tip="c.dialerProxy && c.dialerProxy.enabled ? '关闭链式代理' : '开启链式代理'">
+                    <i class="fa-solid fa-link"></i>
+                  </button>
+                  <button @click="store.groupForm.config.splice(i, 1)" class="btn btn-xs btn-ghost text-error flex-shrink-0">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
                 </div>
-                <span class="text-xs text-adaptive-muted w-5 text-center">{{ i + 1 }}</span>
-                <span class="flex-1 text-sm text-adaptive-white truncate">{{ getResourceName(c.subId) }}</span>
-                <span v-if="c.filter" class="badge badge-outline badge-xs">筛选</span>
-                <button @click="store.groupForm.config.splice(i, 1)" class="btn btn-xs btn-ghost text-error flex-shrink-0">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
+                <!-- 链式代理选择 -->
+                <div v-if="c.dialerProxy && c.dialerProxy.enabled" class="px-3 pb-2 flex items-center gap-2 border-t border-panel-border pt-2 ml-7">
+                  <i class="fa-solid fa-arrow-right-arrow-left text-warning text-xs"></i>
+                  <span class="text-xs text-adaptive-muted whitespace-nowrap">中转策略组:</span>
+                  <select v-model="c.dialerProxy.group" class="select select-bordered select-xs bg-adaptive-input flex-1 min-w-0">
+                    <option value="">请选择策略组</option>
+                    <option v-for="pg in store.groupForm.clash_config.groups" :key="pg.name" :value="pg.name">
+                      {{ pg.name }}
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -262,6 +285,15 @@ function selectAllResources() {
     store.groupForm.config = []
   } else {
     store.groupForm.config = store.resources.map(r => ({ subId: r.id, name: r.name }))
+  }
+}
+
+// === 链式代理 ===
+function toggleDialerProxy(configItem) {
+  if (!configItem.dialerProxy) {
+    configItem.dialerProxy = { enabled: true, group: '' }
+  } else {
+    configItem.dialerProxy.enabled = !configItem.dialerProxy.enabled
   }
 }
 
