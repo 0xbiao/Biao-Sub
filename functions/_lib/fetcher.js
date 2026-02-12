@@ -8,7 +8,7 @@ import { generateNodeLink } from './generator.js';
  * @param {string} url 远程订阅 URL
  * @returns {Promise<{content: string, subInfo: object}>}
  */
-export const fetchSubscription = async (url) => {
+export const fetchSubscription = async (url, ua) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -16,7 +16,7 @@ export const fetchSubscription = async (url) => {
         const res = await fetch(url, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'clash-verge/v1.7.7', // 同时也支持 clash-meta 以获取更多节点信息，但暂且保持原样
+                'User-Agent': ua || 'clash-verge/v1.7.7',
                 'Accept': '*/*',
                 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
                 'Cache-Control': 'no-cache'
@@ -76,8 +76,8 @@ export const fetchSubscription = async (url) => {
  * @param {Function} parseNodesCommon 节点解析函数 (可以是 parser.js 的也可以是 parser-remote.js 的)
  * @returns {Promise<{nodes: Array, nodeLinks: string, subInfo: object}>}
  */
-export const processRemoteSubscription = async (url, parseNodesCommon) => {
-    const { content, subInfo } = await fetchSubscription(url);
+export const processRemoteSubscription = async (url, parseNodesCommon, ua) => {
+    const { content, subInfo } = await fetchSubscription(url, ua);
 
     if (!content || content.trim().length === 0) {
         throw new Error('远程订阅返回内容为空');

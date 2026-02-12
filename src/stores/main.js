@@ -98,7 +98,7 @@ export const useMainStore = defineStore('main', () => {
         mode: 'auto',
         url: '',
         name: '',
-        content: ''
+        ua: 'clash-verge/v1.7.7'
     })
 
     return {

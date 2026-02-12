@@ -5,45 +5,38 @@
         <i class="fa-solid fa-globe text-success"></i> 远程订阅
       </h3>
 
-      <!-- 模式切换 -->
-      <div class="tabs tabs-boxed mb-4 p-1">
-        <a class="tab tab-sm flex-1" :class="{ 'tab-active': store.remoteModal.mode === 'auto' }"
-          @click="store.remoteModal.mode = 'auto'">
-          <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> 自动获取
-        </a>
-        <a class="tab tab-sm flex-1" :class="{ 'tab-active': store.remoteModal.mode === 'manual' }"
-          @click="store.remoteModal.mode = 'manual'">
-          <i class="fa-solid fa-paste mr-1"></i> 手动粘贴
-        </a>
+      <!-- 订阅链接 -->
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text text-adaptive-muted">订阅链接</span></label>
+        <input v-model="store.remoteModal.url" type="text" placeholder="https://..."
+          class="input input-bordered bg-adaptive-input w-full" />
       </div>
 
-      <!-- 自动模式 -->
-      <div v-if="store.remoteModal.mode === 'auto'">
-        <div class="form-control mb-4">
-          <label class="label"><span class="label-text text-adaptive-muted">订阅链接</span></label>
-          <input v-model="store.remoteModal.url" type="text" placeholder="https://..."
-            class="input input-bordered bg-adaptive-input w-full" />
-        </div>
-        <div class="form-control mb-4">
-          <label class="label"><span class="label-text text-adaptive-muted">名称（可选）</span></label>
-          <input v-model="store.remoteModal.name" type="text" placeholder="自动识别"
-            class="input input-bordered bg-adaptive-input w-full" />
-        </div>
+      <!-- 名称（可选） -->
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text text-adaptive-muted">名称（可选）</span></label>
+        <input v-model="store.remoteModal.name" type="text" placeholder="自动识别"
+          class="input input-bordered bg-adaptive-input w-full" />
       </div>
 
-      <!-- 手动模式 -->
-      <div v-if="store.remoteModal.mode === 'manual'">
-        <div class="form-control mb-4">
-          <label class="label"><span class="label-text text-adaptive-muted">名称</span></label>
-          <input v-model="store.remoteModal.name" type="text" placeholder="订阅名称"
-            class="input input-bordered bg-adaptive-input w-full" />
-        </div>
-        <div class="form-control mb-4">
-          <label class="label"><span class="label-text text-adaptive-muted">节点内容</span></label>
-          <textarea v-model="store.remoteModal.content" rows="6"
-            placeholder="粘贴 Base64 编码内容或节点链接"
-            class="textarea textarea-bordered bg-adaptive-input w-full font-mono text-xs"></textarea>
-        </div>
+      <!-- UA 选择（新增） -->
+      <div class="form-control mb-6">
+        <label class="label">
+          <span class="label-text text-adaptive-muted">客户端标识 (User-Agent)</span>
+          <div class="tooltip tooltip-left" data-tip="若导入失败或节点不全，请尝试切换此选项">
+            <i class="fa-regular fa-circle-question text-adaptive-muted opacity-60"></i>
+          </div>
+        </label>
+        <select v-model="store.remoteModal.ua" class="select select-bordered bg-adaptive-input w-full">
+          <option value="clash-verge/v1.7.7">Clash Verge (默认 - 获取 YAML)</option>
+          <option value="v2rayNG/1.8.5">v2rayNG (通用 - 获取 Base64 节点列表)</option>
+          <option value="ClashMeta/1.0">Clash Meta (Meta 格式)</option>
+        </select>
+        <label class="label">
+           <span class="label-text-alt text-adaptive-muted text-opacity-50">
+             某些机场的通用链接会根据客户端标识返回不同格式。如果遇到“无法解析”或“节点丢失”，通常切换到 v2rayNG 即可解决。
+           </span>
+        </label>
       </div>
 
       <div class="modal-action">
@@ -67,43 +60,30 @@ import { API } from '../../api/config.js'
 const store = useMainStore()
 
 async function submitRemote() {
-  if (store.remoteModal.mode === 'auto') {
     if (!store.remoteModal.url) { showToast('请输入订阅链接', 'error'); return }
+
     store.remoteModal.loading = true
     try {
+      // 提交时带上 UA 参数
       const res = await authFetch(`${API}/remote`, {
         method: 'POST',
-        body: { url: store.remoteModal.url, name: store.remoteModal.name }
+        body: { 
+          url: store.remoteModal.url, 
+          name: store.remoteModal.name,
+          ua: store.remoteModal.ua 
+        }
       })
       if (res.success) {
         showToast(`导入成功：${res.data.nodeCount}个节点`)
         store.remoteModal.show = false
         store.remoteModal.url = ''
         store.remoteModal.name = ''
+        // UA 保持上次选择，不重置，方便用户连续操作
         loadResources()
       } else {
         showToast(res.error || '导入失败', 'error')
       }
     } catch (e) { showToast('导入失败', 'error') }
     store.remoteModal.loading = false
-  } else {
-    // 手动模式
-    if (!store.remoteModal.content && !store.remoteModal.name) { showToast('请输入内容', 'error'); return }
-    store.remoteModal.loading = true
-    try {
-      const res = await authFetch(`${API}/subs`, {
-        method: 'POST',
-        body: { name: store.remoteModal.name || '手动导入', url: store.remoteModal.content, type: 'sub' }
-      })
-      if (res.success) {
-        showToast('导入成功')
-        store.remoteModal.show = false
-        store.remoteModal.content = ''
-        store.remoteModal.name = ''
-        loadResources()
-      }
-    } catch (e) { showToast('导入失败', 'error') }
-    store.remoteModal.loading = false
-  }
 }
 </script>
