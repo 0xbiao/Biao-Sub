@@ -40,26 +40,54 @@
 
         <!-- Tab: 节点配置 -->
         <div v-show="store.groupModal.tab === 'base' && store.groupForm.clash_config.mode !== 'raw'">
+          <!-- 选择资源 -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-3">
               <h4 class="font-bold text-sm text-adaptive-white">选择资源</h4>
-              <span class="badge badge-sm badge-ghost">{{ store.groupForm.config.length }}个已选</span>
+              <div class="flex items-center gap-2">
+                <button class="btn btn-xs btn-ghost" @click="selectAllResources">
+                  {{ store.groupForm.config.length === store.resources.length ? '取消全选' : '全选' }}
+                </button>
+                <span class="badge badge-sm badge-ghost">{{ store.groupForm.config.length }}个已选</span>
+              </div>
             </div>
-            <div class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+            <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
               <div v-for="r in store.resources" :key="r.id"
                 class="flex items-center gap-3 p-2 rounded-lg bg-adaptive-input hover:bg-primary/10 transition-all cursor-pointer"
                 @click="toggleResource(r)">
                 <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
                   :checked="isResourceSelected(r.id)" @click.stop="toggleResource(r)" />
                 <span class="flex-1 text-sm text-adaptive-white truncate">{{ r.name }}</span>
-                <span class="badge badge-xs" :class="r.type === 'node' ? 'badge-primary' : 'badge-secondary'">
-                  {{ r.type === 'node' ? '节点' : '订阅' }}
+                <span class="badge badge-xs" :class="r.type === 'node' ? 'badge-primary' : r.type === 'group' ? 'badge-warning' : r.type === 'remote' ? 'badge-success' : 'badge-secondary'">
+                  {{ r.type === 'node' ? '节点' : r.type === 'group' ? '节点组' : r.type === 'remote' ? '远程' : '订阅' }}
                 </span>
                 <span v-if="r.info && r.info.nodeCount" class="text-xs text-adaptive-muted">{{ r.info.nodeCount }}节点</span>
                 <!-- 筛选按钮 -->
                 <button v-if="isResourceSelected(r.id) && r.info && r.info.nodeCount > 1"
                   @click.stop="openNodeSelector(r)" class="btn btn-xs btn-ghost text-accent">
                   <i class="fa-solid fa-filter"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 已选资源排序 -->
+          <div v-if="store.groupForm.config.length > 0" class="mb-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-bold text-sm text-adaptive-white">已选资源排序</h4>
+              <span class="text-xs text-adaptive-muted">拖拽调整顺序</span>
+            </div>
+            <div ref="selectedResourceListRef" class="space-y-1">
+              <div v-for="(c, i) in store.groupForm.config" :key="c.subId"
+                class="flex items-center gap-2 p-2 rounded-lg bg-adaptive-input border border-panel-border" :data-sub-id="c.subId">
+                <div class="config-drag-handle cursor-grab active:cursor-grabbing flex-shrink-0">
+                  <i class="fa-solid fa-grip-vertical text-adaptive-muted"></i>
+                </div>
+                <span class="text-xs text-adaptive-muted w-5 text-center">{{ i + 1 }}</span>
+                <span class="flex-1 text-sm text-adaptive-white truncate">{{ getResourceName(c.subId) }}</span>
+                <span v-if="c.filter" class="badge badge-outline badge-xs">筛选</span>
+                <button @click="store.groupForm.config.splice(i, 1)" class="btn btn-xs btn-ghost text-error flex-shrink-0">
+                  <i class="fa-solid fa-xmark"></i>
                 </button>
               </div>
             </div>
@@ -216,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useMainStore } from '../../stores/main.js'
 import { authFetch, loadGroups, loadTemplates } from '../../api/index.js'
 import { showToast } from '../../utils/helpers.js'
@@ -224,8 +252,42 @@ import { API } from '../../api/config.js'
 
 const store = useMainStore()
 const uploadedFileName = ref('')
+const selectedResourceListRef = ref(null)
 
 const emit = defineEmits(['openNodeSelector', 'openClashNodeSelector'])
+
+// === 全选/取消全选 ===
+function selectAllResources() {
+  if (store.groupForm.config.length === store.resources.length) {
+    store.groupForm.config = []
+  } else {
+    store.groupForm.config = store.resources.map(r => ({ subId: r.id, name: r.name }))
+  }
+}
+
+// === 已选资源拖拽排序 ===
+let configSortableInstance = null
+async function initConfigSortable() {
+  if (!selectedResourceListRef.value) return
+  try {
+    const { default: Sortable } = await import('sortablejs')
+    if (configSortableInstance) configSortableInstance.destroy()
+    configSortableInstance = new Sortable(selectedResourceListRef.value, {
+      handle: '.config-drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      onEnd: () => {
+        const els = Array.from(selectedResourceListRef.value.children)
+        const newOrder = els.map(el => parseInt(el.dataset.subId))
+        const oldConfig = [...store.groupForm.config]
+        store.groupForm.config = newOrder.map(subId => oldConfig.find(c => c.subId === subId)).filter(Boolean)
+      }
+    })
+  } catch (e) { console.error('Config sortable init failed:', e) }
+}
+
+watch(() => store.groupForm.config.length, () => { nextTick(initConfigSortable) })
+watch(() => store.groupModal.tab, (tab) => { if (tab === 'base') nextTick(initConfigSortable) })
 
 // === 文件上传 ===
 function handleFileSelect(e) {
