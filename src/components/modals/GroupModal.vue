@@ -151,7 +151,7 @@
                 <i class="fa-solid fa-plus mr-1"></i> 添加策略组
               </button>
               <div ref="proxyGroupListRef">
-                <div v-for="(pg, i) in store.groupForm.clash_config.groups" :key="i"
+                <div v-for="(pg, i) in store.groupForm.clash_config.groups" :key="pg"
                   class="card bg-adaptive-input border border-panel-border mb-2 p-3">
                   <div class="grid grid-cols-2 gap-2 mb-2">
                     <div class="col-span-2 flex items-center gap-2">
