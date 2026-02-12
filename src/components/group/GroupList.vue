@@ -26,7 +26,9 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="font-bold text-adaptive-white text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{{ g.name }}</h3>
-                <span class="badge badge-accent badge-sm">{{ (g.config || []).length }}个资源</span>
+                <span class="badge badge-accent badge-sm">
+                  {{ isRawMode(g) ? '托管YAML' : `${(g.config || []).length}个资源` }}
+                </span>
                 <span v-if="g.access_count" class="badge badge-ghost badge-sm">
                   <i class="fa-solid fa-chart-simple mr-1"></i> {{ g.access_count }}次
                 </span>
@@ -36,7 +38,7 @@
                 <button @click="copyLink(g.token, 'clash')" class="btn btn-xs btn-outline btn-primary gap-1">
                   <i class="fa-solid fa-copy"></i> Clash
                 </button>
-                <button @click="copyLink(g.token, 'base64')" class="btn btn-xs btn-outline btn-secondary gap-1">
+                <button v-if="!isRawMode(g)" @click="copyLink(g.token, 'base64')" class="btn btn-xs btn-outline btn-secondary gap-1">
                   <i class="fa-solid fa-copy"></i> Base64
                 </button>
               </div>
@@ -74,6 +76,13 @@ import { defaultHeader, defaultRules } from '../../api/config.js'
 const store = useMainStore()
 const groupListRef = ref(null)
 
+function isRawMode(g) {
+  try {
+    const cc = typeof g.clash_config === 'string' ? JSON.parse(g.clash_config) : g.clash_config
+    return cc && cc.mode === 'raw'
+  } catch (e) { return false }
+}
+
 function openAddGroup() {
   store.groupForm = {
     id: null, name: '',
@@ -92,7 +101,7 @@ function openEditGroup(g) {
     clash_config: JSON.parse(JSON.stringify(g.clash_config || { mode: 'generate', header: '', groups: [], rules: '', resources: [], raw_yaml: '' }))
   }
   store.groupModal.isEdit = true
-  store.groupModal.tab = 'base'
+  store.groupModal.tab = store.groupForm.clash_config.mode === 'raw' ? 'raw' : 'base'
   store.groupModal.show = true
 }
 
