@@ -195,21 +195,6 @@
             </div>
           </div>
 
-          <!-- Clash Tab 下的资源选择 -->
-          <div class="collapse collapse-arrow bg-adaptive-input border border-panel-border mb-3">
-            <input type="checkbox" />
-            <div class="collapse-title text-sm font-bold text-adaptive-white">输出资源（覆盖节点Tab）</div>
-            <div class="collapse-content">
-              <p class="text-xs text-adaptive-muted mb-2">如果设置了此处的资源，将覆盖节点配置Tab的选择</p>
-              <div v-for="r in store.resources" :key="r.id"
-                class="flex items-center gap-2 p-1"
-                @click="toggleClashResource(r)">
-                <input type="checkbox" class="checkbox checkbox-xs checkbox-accent"
-                  :checked="isClashResourceSelected(r.id)" @click.stop="toggleClashResource(r)" />
-                <span class="text-sm text-adaptive-white">{{ r.name }}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Tab: 托管YAML -->
@@ -368,19 +353,7 @@ function toggleResource(r) {
   }
 }
 
-function isClashResourceSelected(id) {
-  return (store.groupForm.clash_config.resources || []).some(r => r.subId === id)
-}
 
-function toggleClashResource(r) {
-  if (!store.groupForm.clash_config.resources) store.groupForm.clash_config.resources = []
-  const idx = store.groupForm.clash_config.resources.findIndex(c => c.subId === r.id)
-  if (idx === -1) {
-    store.groupForm.clash_config.resources.push({ subId: r.id, name: r.name })
-  } else {
-    store.groupForm.clash_config.resources.splice(idx, 1)
-  }
-}
 
 function getResourceName(subId) {
   const r = store.resources.find(r => r.id === subId)
@@ -392,7 +365,7 @@ function addProxyGroup() {
     name: '',
     type: 'select',
     proxies: [],
-    useAllProxies: true
+    useAllProxies: false
   })
 }
 
