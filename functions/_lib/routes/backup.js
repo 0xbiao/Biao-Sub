@@ -38,12 +38,12 @@ export function registerBackupRoutes(app) {
         try {
             const batch = [];
             if (items && Array.isArray(items)) {
-                const s = c.env.DB.prepare("INSERT INTO subscriptions (name, url, type, info, params, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                items.forEach(i => batch.push(s.bind(i.name, i.url, i.type || 'subscription', JSON.stringify(i.info || {}), JSON.stringify(i.params || {}), i.status ?? 1, i.sort_order ?? 0)));
+                const s = c.env.DB.prepare("INSERT INTO subscriptions (name, url, source_url, type, info, params, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                items.forEach(i => batch.push(s.bind(i.name, i.url, i.source_url || null, i.type || 'subscription', JSON.stringify(i.info || {}), JSON.stringify(i.params || {}), i.status ?? 1, i.sort_order ?? 0)));
             }
             if (groups && Array.isArray(groups)) {
-                const s = c.env.DB.prepare("INSERT INTO groups (name, token, config, clash_config, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-                groups.forEach(g => batch.push(s.bind(g.name, g.token, JSON.stringify(g.config || []), JSON.stringify(g.clash_config || {}), g.status ?? 1, g.sort_order ?? 0)));
+                const s = c.env.DB.prepare("INSERT INTO groups (name, token, config, clash_config, cached_yaml, access_count, last_accessed, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                groups.forEach(g => batch.push(s.bind(g.name, g.token, JSON.stringify(g.config || []), JSON.stringify(g.clash_config || {}), g.cached_yaml || null, g.access_count || 0, g.last_accessed || null, g.status ?? 1, g.sort_order ?? 0)));
             }
             if (templates && Array.isArray(templates)) {
                 const s = c.env.DB.prepare("INSERT INTO templates (name, header, groups, rules) VALUES (?, ?, ?, ?)");

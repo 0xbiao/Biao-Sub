@@ -39,19 +39,17 @@
 
 ### 第三步：初始化数据库表
 
-在 D1 数据库控制台中，进入 **控制台** 标签，执行以下 SQL 命令：
-
-#### 方案 A：全新部署（首次安装）
-复制粘贴执行以下全部内容：
+在 D1 数据库控制台中，进入 **控制台** 标签，执行以下 SQL 命令（直接复制粘贴执行即可）：
 
 ```sql
 CREATE TABLE IF NOT EXISTS subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     url TEXT NOT NULL,
+    source_url TEXT,
     type TEXT DEFAULT 'subscription',
     info TEXT,
-    params TEXT,
+    params TEXT DEFAULT '{}',
     status INTEGER DEFAULT 1,
     sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -64,6 +62,9 @@ CREATE TABLE IF NOT EXISTS groups (
     token TEXT UNIQUE NOT NULL,
     config TEXT,
     clash_config TEXT,
+    cached_yaml TEXT,
+    access_count INTEGER DEFAULT 0,
+    last_accessed TEXT,
     status INTEGER DEFAULT 1,
     sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -81,20 +82,6 @@ CREATE TABLE IF NOT EXISTS templates (
 );
 ```
 
-#### 方案 B：旧版本升级（保留数据）
-如果你是从旧版本升级，请依次执行以下迁移命令：
-
-```sql
-
-ALTER TABLE subscriptions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
-
-ALTER TABLE groups ADD COLUMN clash_config TEXT;
-ALTER TABLE groups ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
-
-```
-
-> ⚠️ **注意**：如果执行 `ALTER TABLE` 报错提示列已存在，可以忽略。执行完成后重新保存聚合组即可生效。
-
 ### 第四步：创建 Pages 项目
 
 1. 在左侧栏中，选择 **计算和AI**
@@ -104,8 +91,8 @@ ALTER TABLE groups ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
    - **项目名称**：自定义输入
    - **生产分支**：`main`
    - **框架预设**：无
-   - **构建命令**：`npm install`
-   - **构建输出目录**：`public`
+   - **构建命令**：`npm run build`
+   - **构建输出目录**：`dist`
 5. 点击 **保存并部署**
 
 ### 第五步：绑定 D1 数据库
@@ -203,3 +190,8 @@ ALTER TABLE groups ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
 - **修复BUG**：修复了几个隐藏的BUG。
 - **新增订阅使用统计**：订阅被成功拉取一次则计数+1并显示拉取时间。
 - **新增远程订阅源导入**：新增导入订阅按钮，可导入机场订阅Url链接，由于项目是CF部署搭建，有一些机场订阅Url在获取的时候默认屏蔽了CF出站IP，需要在网页访问机场订阅Url获取Base64编码，复制后使用手动导入（弊端就是无法实时更新）。由于目前新增的远程订阅源导入属于实验性功能，可能会有远程订阅源节点获取不完整等情况出现。
+
+### 2026.02.12
+- **远程订阅解析引擎重构**：独立重写了解析逻辑，支持多策略并行解析与深度 Base64 纠错，解决了“通用订阅链接”节点解析不全的问题。完美支持 Flow 风格 YAML。
+- **新增手动 UA 选择**：导入时可选客户端标识（Clash / v2rayNG / Meta），配合后端持久化，彻底解决了订阅格式兼容性问题。
+- **体验优化**：移除手动粘贴模式，资源列表增加 UA 来源标识。

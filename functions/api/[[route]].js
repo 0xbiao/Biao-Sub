@@ -20,7 +20,8 @@ app.use('/*', async (c, next) => {
             `ALTER TABLE groups ADD COLUMN cached_yaml TEXT`,
             `ALTER TABLE groups ADD COLUMN access_count INTEGER DEFAULT 0`,
             `ALTER TABLE groups ADD COLUMN last_accessed TEXT`,
-            `ALTER TABLE subscriptions ADD COLUMN source_url TEXT`
+            `ALTER TABLE subscriptions ADD COLUMN source_url TEXT`,
+            `ALTER TABLE subscriptions ADD COLUMN params TEXT DEFAULT '{}'`
         ];
         for (const sql of migrations) {
             try { await c.env.DB.prepare(sql).run(); } catch (e) { /* 字段已存在则忽略 */ }
