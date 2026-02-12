@@ -16,7 +16,7 @@ export const fetchSubscription = async (url) => {
         const res = await fetch(url, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'clash-verge/v1.7.7',
+                'User-Agent': 'clash-verge/v1.7.7', // 同时也支持 clash-meta 以获取更多节点信息，但暂且保持原样
                 'Accept': '*/*',
                 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
                 'Cache-Control': 'no-cache'
@@ -73,7 +73,7 @@ export const fetchSubscription = async (url) => {
 /**
  * 获取远程订阅并解析节点
  * @param {string} url 远程订阅 URL
- * @param {Function} parseNodesCommon 节点解析函数
+ * @param {Function} parseNodesCommon 节点解析函数 (可以是 parser.js 的也可以是 parser-remote.js 的)
  * @returns {Promise<{nodes: Array, nodeLinks: string, subInfo: object}>}
  */
 export const processRemoteSubscription = async (url, parseNodesCommon) => {

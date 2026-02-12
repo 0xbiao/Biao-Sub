@@ -1,4 +1,4 @@
-import { parseNodesCommon } from '../parser.js';
+import { parseRemoteContent } from '../parser-remote.js';
 import { processRemoteSubscription } from '../fetcher.js';
 import { refreshGroupCacheByResourceIds } from './subscription.js';
 
@@ -12,7 +12,8 @@ export function registerRemoteRoutes(app) {
         if (!sourceUrl) return c.json({ success: false, error: '请输入订阅链接' }, 400);
 
         try {
-            const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sourceUrl, parseNodesCommon);
+            // 使用增强版解析器 parseRemoteContent
+            const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sourceUrl, parseRemoteContent);
             const finalName = name || subInfo.fileName || `远程订阅 (${nodes.length}个节点)`;
 
             await c.env.DB.prepare(
@@ -36,7 +37,8 @@ export function registerRemoteRoutes(app) {
             const sub = await c.env.DB.prepare("SELECT * FROM subscriptions WHERE id = ? AND type = 'remote'").bind(id).first();
             if (!sub) return c.json({ success: false, error: '资源不存在或不是远程订阅类型' }, 404);
 
-            const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sub.source_url, parseNodesCommon);
+            // 使用增强版解析器 parseRemoteContent
+            const { nodes, nodeLinks, subInfo } = await processRemoteSubscription(sub.source_url, parseRemoteContent);
 
             await c.env.DB.prepare(
                 "UPDATE subscriptions SET url = ?, info = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
