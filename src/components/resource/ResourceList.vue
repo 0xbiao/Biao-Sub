@@ -69,6 +69,9 @@
                 <span v-if="r.info && r.info.nodeCount" class="badge badge-ghost badge-sm">
                   <i class="fa-solid fa-diagram-project mr-1"></i> {{ r.info.nodeCount }}个节点
                 </span>
+                <span v-if="getUADisplay(r)" class="badge badge-xs sm:badge-sm" :class="getUADisplay(r).class">
+                  {{ getUADisplay(r).text }}
+                </span>
               </div>
 
             </div>
@@ -116,6 +119,20 @@ const filteredResources = computed(() => {
   if (store.resourceFilter === 'all') return store.resources
   return store.resources.filter(r => r.type === store.resourceFilter)
 })
+
+function getUADisplay(r) {
+  if (r.type !== 'remote') return null
+  try {
+    const p = typeof r.params === 'string' ? JSON.parse(r.params) : (r.params || {})
+    const ua = p.ua || 'clash-verge/v1.7.7' // 默认视为 Clash
+    
+    if (ua.includes('v2rayNG')) return { text: 'v2rayNG', class: 'badge-info badge-outline' }
+    if (ua.includes('ClashMeta')) return { text: 'Meta', class: 'badge-warning badge-outline' }
+    if (ua.includes('clash-verge')) return { text: 'Clash', class: 'badge-primary badge-outline' }
+    
+    return { text: 'Other', class: 'badge-ghost' }
+  } catch (e) { return null }
+}
 
 function openAddResource() {
   store.resourceForm = { name: '', url: '', type: 'node' }
