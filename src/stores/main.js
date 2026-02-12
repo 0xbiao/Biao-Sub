@@ -87,6 +87,7 @@ export const useMainStore = defineStore('main', () => {
         allResourceNames: [],
         allGroupNames: [],
         allNodeNames: [],
+        nodesByResource: [],  // [{ subId, name, type, nodes: [name1, name2...] }]
         tempSelected: []
     })
 

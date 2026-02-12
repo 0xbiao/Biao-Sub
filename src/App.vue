@@ -103,11 +103,10 @@ async function handleOpenClashNodeSelector(groupIndex) {
   store.clashNodeSelector.loading = true
   store.clashNodeSelector.show = true
 
-  // 收集所有节点名
+  // 收集所有节点名，按资源分组
   const allNodes = []
-  const targetConfig = store.groupForm.clash_config.resources?.length > 0
-    ? store.groupForm.clash_config.resources
-    : store.groupForm.config
+  const nodesByResource = []
+  const targetConfig = store.groupForm.config
 
   for (const item of targetConfig) {
     const resource = store.resources.find(r => r.id === item.subId)
@@ -115,13 +114,26 @@ async function handleOpenClashNodeSelector(groupIndex) {
       try {
         const res = await authFetch(`${API}/check`, { method: 'POST', body: { url: resource.url } })
         if (res.success && res.data.nodes) {
-          res.data.nodes.forEach(n => { if (n.name && !allNodes.includes(n.name)) allNodes.push(n.name) })
+          const resourceNodes = []
+          res.data.nodes.forEach(n => {
+            if (n.name && !allNodes.includes(n.name)) {
+              allNodes.push(n.name)
+              resourceNodes.push(n.name)
+            }
+          })
+          nodesByResource.push({
+            subId: resource.id,
+            name: resource.name,
+            type: resource.type,  // 'node' | 'group' | 'remote'
+            nodes: resourceNodes
+          })
         }
       } catch (e) { /* 忽略 */ }
     }
   }
 
   store.clashNodeSelector.allNodeNames = allNodes
+  store.clashNodeSelector.nodesByResource = nodesByResource
   store.clashNodeSelector.allGroupNames = store.groupForm.clash_config.groups.map(g => g.name).filter(Boolean)
 
   // 恢复已有选择

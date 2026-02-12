@@ -42,14 +42,14 @@
         </div>
       </div>
 
-      <!-- 可选策略组 (引用组名) -->
-      <div v-if="store.clashNodeSelector.allGroupNames.length > 0" class="mb-4">
+      <!-- 可选策略组 (排除自身) -->
+      <div v-if="filteredGroupNames.length > 0" class="mb-4">
         <div class="flex items-center gap-2 mb-2">
           <i class="fa-solid fa-sitemap text-accent text-xs"></i>
           <span class="text-xs text-adaptive-muted font-semibold">可选策略组 (引用组名):</span>
         </div>
         <div class="flex flex-wrap gap-1.5">
-          <span v-for="name in store.clashNodeSelector.allGroupNames" :key="name"
+          <span v-for="name in filteredGroupNames" :key="name"
             class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
             :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-accent' : 'badge-outline badge-accent hover:bg-accent/20'"
             @click="toggleProxy(name)">
@@ -58,18 +58,18 @@
         </div>
       </div>
 
-      <!-- 可选资源组 (引用整组节点) -->
-      <div v-if="resourceGroupNames.length > 0" class="mb-4">
+      <!-- 可选节点组 (只显示 type=group 的资源) -->
+      <div v-if="groupResources.length > 0" class="mb-4">
         <div class="flex items-center gap-2 mb-2">
           <i class="fa-solid fa-cubes text-warning text-xs"></i>
-          <span class="text-xs text-adaptive-muted font-semibold">可选资源组 (引用整组节点):</span>
+          <span class="text-xs text-adaptive-muted font-semibold">可选节点组 (引用整组节点):</span>
         </div>
         <div class="flex flex-wrap gap-1.5">
-          <span v-for="name in resourceGroupNames" :key="name"
+          <span v-for="res in groupResources" :key="res.name"
             class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
-            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-warning' : 'badge-outline badge-warning hover:bg-warning/20'"
-            @click="toggleProxy(name)">
-            {{ name }}
+            :class="store.clashNodeSelector.tempSelected.includes(res.name) ? 'badge-warning' : 'badge-outline badge-warning hover:bg-warning/20'"
+            @click="toggleProxy(res.name)">
+            {{ res.name }}
           </span>
         </div>
       </div>
@@ -91,18 +91,40 @@
       </div>
 
       <!-- 单节点选择 -->
-      <div v-if="store.clashNodeSelector.allNodeNames.length > 0" class="mb-4">
+      <div v-if="nodeResources.length > 0" class="mb-4">
         <div class="flex items-center gap-2 mb-2">
           <i class="fa-solid fa-server text-info text-xs"></i>
           <span class="text-xs text-adaptive-muted font-semibold">单节点选择:</span>
         </div>
-        <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar p-1">
-          <span v-for="name in store.clashNodeSelector.allNodeNames" :key="name"
-            class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
-            :class="store.clashNodeSelector.tempSelected.includes(name) ? 'badge-info' : 'badge-outline badge-info hover:bg-info/20'"
-            @click="toggleProxy(name)">
-            {{ name }}
-          </span>
+        <!-- 独立节点 (type=node) 直接显示 -->
+        <div v-for="res in nodeResources" :key="res.subId" class="mb-2">
+          <div class="flex flex-wrap gap-1.5">
+            <span v-for="nodeName in res.nodes" :key="nodeName"
+              class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+              :class="store.clashNodeSelector.tempSelected.includes(nodeName) ? 'badge-info' : 'badge-outline badge-info hover:bg-info/20'"
+              @click="toggleProxy(nodeName)">
+              {{ nodeName }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 节点组 (type=group/remote) 折叠展开 -->
+        <div v-for="res in groupTypeResources" :key="res.subId" class="mb-2">
+          <div class="flex items-center gap-2 cursor-pointer select-none p-1.5 rounded-lg hover:bg-base-300/50 transition-colors"
+            @click="toggleExpand(res.subId)">
+            <i class="fa-solid text-xs text-warning transition-transform" 
+              :class="expandedGroups.includes(res.subId) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            <span class="text-xs font-semibold text-warning">{{ res.name }}</span>
+            <span class="badge badge-xs badge-ghost">{{ res.nodes.length }}节点</span>
+          </div>
+          <div v-if="expandedGroups.includes(res.subId)" class="flex flex-wrap gap-1.5 mt-1 ml-4">
+            <span v-for="nodeName in res.nodes" :key="nodeName"
+              class="badge cursor-pointer py-2.5 px-3 text-xs transition-all"
+              :class="store.clashNodeSelector.tempSelected.includes(nodeName) ? 'badge-info' : 'badge-outline badge-info hover:bg-info/20'"
+              @click="toggleProxy(nodeName)">
+              {{ nodeName }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -125,16 +147,42 @@ import { showToast } from '../../utils/helpers.js'
 
 const store = useMainStore()
 const selectedTagsRef = ref(null)
+const expandedGroups = ref([])
 
-// 资源组名列表 (来自已选资源)
-const resourceGroupNames = computed(() => {
-  return store.groupForm.config
-    .map(c => {
-      const r = store.resources.find(res => res.id === c.subId)
-      return r ? r.name : null
-    })
-    .filter(Boolean)
+// 排除当前编辑的策略组
+const filteredGroupNames = computed(() => {
+  const currentIdx = store.clashNodeSelector.currentGroup
+  const currentName = currentIdx !== null && store.groupForm.clash_config.groups[currentIdx]
+    ? store.groupForm.clash_config.groups[currentIdx].name
+    : ''
+  return store.clashNodeSelector.allGroupNames.filter(name => name !== currentName)
 })
+
+// 节点组资源 (type=group)
+const groupResources = computed(() => {
+  return store.clashNodeSelector.nodesByResource.filter(r => r.type === 'group')
+})
+
+// 独立节点资源 (type=node)
+const nodeResources = computed(() => {
+  return store.clashNodeSelector.nodesByResource.filter(r => r.type === 'node')
+})
+
+// 非独立节点资源（用于折叠展开）(type=group/remote)
+const groupTypeResources = computed(() => {
+  return store.clashNodeSelector.nodesByResource.filter(r => r.type === 'group' || r.type === 'remote')
+})
+
+// 是否有单节点区域可显示
+const hasNodeSection = computed(() => {
+  return nodeResources.value.length > 0 || groupTypeResources.value.length > 0
+})
+
+function toggleExpand(subId) {
+  const idx = expandedGroups.value.indexOf(subId)
+  if (idx === -1) expandedGroups.value.push(subId)
+  else expandedGroups.value.splice(idx, 1)
+}
 
 function toggleProxy(name) {
   const idx = store.clashNodeSelector.tempSelected.indexOf(name)
@@ -149,8 +197,8 @@ function removeProxy(name) {
 
 function selectAll() {
   const all = [
-    ...store.clashNodeSelector.allGroupNames,
-    ...resourceGroupNames.value,
+    ...filteredGroupNames.value,
+    ...groupResources.value.map(r => r.name),
     ...['DIRECT', 'REJECT'],
     ...store.clashNodeSelector.allNodeNames
   ]
@@ -187,5 +235,10 @@ async function initSortable() {
 }
 
 watch(() => store.clashNodeSelector.tempSelected.length, () => { nextTick(initSortable) })
-watch(() => store.clashNodeSelector.show, (show) => { if (show) nextTick(initSortable) })
+watch(() => store.clashNodeSelector.show, (show) => {
+  if (show) {
+    expandedGroups.value = []
+    nextTick(initSortable)
+  }
+})
 </script>
