@@ -39,7 +39,7 @@
         </div>
 
         <!-- Tab: 节点配置 -->
-        <div v-show="store.groupModal.tab === 'base'">
+        <div v-show="store.groupModal.tab === 'base' && store.groupForm.clash_config.mode !== 'raw'">
           <div class="mb-4">
             <div class="flex items-center justify-between mb-3">
               <h4 class="font-bold text-sm text-adaptive-white">选择资源</h4>

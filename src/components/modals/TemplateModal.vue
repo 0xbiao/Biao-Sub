@@ -82,6 +82,7 @@ function selectTemplate(type, template) {
   }
 
   store.templateModal.show = false
+  store.groupModal.tab = store.groupForm.clash_config.mode === 'raw' ? 'raw' : 'base'
   store.groupModal.show = true
 }
 
