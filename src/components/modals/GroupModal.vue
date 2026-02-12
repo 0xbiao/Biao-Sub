@@ -14,14 +14,13 @@
 
       <!-- Tab 切换 -->
       <div class="tabs tabs-boxed mx-4 sm:mx-6 mt-4 p-1">
-        <a class="tab flex-1" :class="{'tab-active': store.groupModal.tab==='base'}" @click="store.groupModal.tab='base'">
+        <a v-if="store.groupForm.clash_config.mode !== 'raw'" class="tab flex-1" :class="{'tab-active': store.groupModal.tab==='base'}" @click="store.groupModal.tab='base'">
           <i class="fa-solid fa-cubes mr-2"></i> 节点配置
         </a>
-        <a class="tab flex-1" :class="{'tab-active': store.groupModal.tab==='clash'}" @click="store.groupModal.tab='clash'">
+        <a v-if="store.groupForm.clash_config.mode !== 'raw'" class="tab flex-1" :class="{'tab-active': store.groupModal.tab==='clash'}" @click="store.groupModal.tab='clash'">
           <i class="fa-solid fa-gears mr-2"></i> Clash配置
         </a>
-        <a v-if="store.groupForm.clash_config.mode === 'raw'" class="tab flex-1"
-          :class="{'tab-active': store.groupModal.tab==='raw'}" @click="store.groupModal.tab='raw'">
+        <a v-if="store.groupForm.clash_config.mode === 'raw'" class="tab flex-1 tab-active">
           <i class="fa-solid fa-cloud-arrow-up mr-2"></i> 托管YAML
         </a>
       </div>
@@ -196,7 +195,7 @@
       <!-- 底部按钮 -->
       <div class="p-4 sm:p-6 pt-0 flex justify-between items-center">
         <div class="flex gap-2">
-          <button @click="saveAsTemplate" class="btn btn-xs btn-ghost text-accent">
+          <button v-if="store.groupForm.clash_config.mode !== 'raw'" @click="saveAsTemplate" class="btn btn-xs btn-ghost text-accent">
             <i class="fa-solid fa-bookmark mr-1"></i> 保存为模板
           </button>
           <button v-if="store.groupModal.isEdit" @click="refreshToken" class="btn btn-xs btn-ghost text-warning">
