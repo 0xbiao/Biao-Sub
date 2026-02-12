@@ -237,8 +237,8 @@ const parseClashYaml = (text) => {
         try {
             const raw = blockLines.join('\n');
             const get = (k) => {
-                // 匹配 key: value，支持引号，忽略注释
-                const reg = new RegExp(`(?:^|\\s)${k}:\\s*(?:['"](.+?)['"]|([^\\s#\\n]+))`);
+                // 匹配 key: value，支持引号，忽略注释，排除逗号和右括号(用于 Flow 风格)
+                const reg = new RegExp(`(?:^|\\s)${k}:\\s*(?:['"](.+?)['"]|([^\\s#,\\}\\]\\n]+))`);
                 const m = raw.match(reg);
                 return m ? (m[1] || m[2]) : undefined;
             };
@@ -247,9 +247,12 @@ const parseClashYaml = (text) => {
             if (!type || ['selector', 'url-test', 'fallback', 'direct', 'reject', 'load-balance', 'compatible'].includes(type)) return;
 
             // 提取基础字段
+            const portStr = get('port');
+            const port = portStr ? parseInt(portStr) : 0;
+
             const node = {
                 name: get('name'), type,
-                server: get('server'), port: get('port'),
+                server: get('server'), port: port, // 确保端口是数字
                 uuid: get('uuid'), cipher: get('cipher'), password: get('password'),
                 udp: get('udp') === 'true', tls: get('tls') === 'true',
                 'skip-cert-verify': get('skip-cert-verify') === 'true',
